@@ -1,4 +1,4 @@
-import cartopy
+# import cartopy
 import numpy as np
 
 wandb_project = "neural-lam"
@@ -90,8 +90,9 @@ grid_limits = [ # In projection
 ]
 
 # Create projection
-lambert_proj = cartopy.crs.LambertConformal(
-        central_longitude=lambert_proj_params['lon_0'],
-        central_latitude=lambert_proj_params['lat_0'],
-        standard_parallels=(lambert_proj_params['lat_1'],
-        lambert_proj_params['lat_2']))
+# lambert_proj = cartopy.crs.LambertConformal(
+#         central_longitude=lambert_proj_params['lon_0'],
+#         central_latitude=lambert_proj_params['lat_0'],
+#         standard_parallels=(lambert_proj_params['lat_1'],
+#         lambert_proj_params['lat_2']))
+lambert_proj = None

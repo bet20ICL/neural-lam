@@ -12,10 +12,13 @@ class BaseGraphModel(ARModel):
     """
     def __init__(self, args):
         super().__init__(args)
-
+        
         # Load graph with static features
         # NOTE: (IMPORTANT!) mesh nodes MUST have the first N_mesh indices,
         self.hierarchical, graph_ldict = utils.load_graph(args.graph)
+        
+        # bet20: sets self.grid_static_features, self.grid_forcing_dim, self.grid_state_dim ... etc.
+        # full list found in utils.load_graph
         for name, attr_value in graph_ldict.items():
             # Make BufferLists module members and register tensors as buffers
             if isinstance(attr_value, torch.Tensor):
@@ -24,6 +27,9 @@ class BaseGraphModel(ARModel):
                 setattr(self, name, attr_value)
 
         # Specify dimensions of data
+        # bet20:
+        # self.N_grid: number of grid nodes
+        # self.N_mesh: number of mesh nodes
         self.N_grid, grid_static_dim = self.grid_static_features.shape # 63784 = 268x238
         self.N_mesh, N_mesh_ignore = self.get_num_mesh()
         print(f"Loaded graph with {self.N_grid + self.N_mesh} nodes "+
@@ -32,6 +38,10 @@ class BaseGraphModel(ARModel):
         # grid_dim from data + static + batch_static
         grid_dim = 2*self.grid_state_dim + grid_static_dim + self.grid_forcing_dim +\
             self.batch_static_feature_dim
+            
+        # bet20:
+        # number of edges in subgraphs
+        # number of features in subgraphs
         self.g2m_edges, g2m_dim = self.g2m_features.shape
         self.m2g_edges, m2g_dim = self.m2g_features.shape
 
@@ -47,8 +57,11 @@ class BaseGraphModel(ARModel):
 
         # GNNs
         # encoder
-        self.g2m_gnn = InteractionNet(self.g2m_edge_index,
-                args.hidden_dim, hidden_layers=args.hidden_layers, update_edges=False)
+        self.g2m_gnn = InteractionNet(
+                self.g2m_edge_index,
+                args.hidden_dim,
+                hidden_layers=args.hidden_layers,
+                update_edges=False)
         self.encoding_grid_mlp = utils.make_mlp([args.hidden_dim]
                 + self.mlp_blueprint_end)
 

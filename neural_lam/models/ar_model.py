@@ -65,6 +65,9 @@ class ARModel(pl.LightningModule):
         self.spatial_loss_maps = []
 
     def configure_optimizers(self):
+        """
+        bet20: returns a new AdamW optimiser, optionally loads it from state_dict (if restarting training from ckpt?)
+        """
         opt = torch.optim.AdamW(self.parameters(), lr=self.lr, betas=(0.9, 0.95))
         if self.opt_state:
             opt.load_state_dict(self.opt_state)
@@ -103,8 +106,11 @@ class ARModel(pl.LightningModule):
         pred_steps = forcing_features.shape[1]
 
         for i in range(pred_steps):
-            forcing = forcing_features[:, i]
-            border_state = true_states[:, i]
+            # bet20:
+            # this takes a slice along the 1st index (pred_steps)
+            # equivalent to [:, i, :, :]
+            forcing = forcing_features[:, i] # (B, N_grid, d_static_f)
+            border_state = true_states[:, i] # (B, N_grid, d_f)
 
             predicted_state = self.predict_step(prev_state, prev_prev_state,
                     batch_static_features, forcing) # (B, N_grid, d_f)
@@ -143,8 +149,10 @@ class ARModel(pl.LightningModule):
         Predict on single batch
         batch = time_series, batch_static_features, forcing_features
 
-        init_states: (B, 2, N_grid, d_features)
-        target_states: (B, pred_steps, N_grid, d_features)
+        time_series (is a tuple of):
+            init_states: (B, 2, N_grid, d_features)
+            target_states: (B, pred_steps, N_grid, d_features)
+            
         batch_static_features: (B, N_grid, d_static_f), for example open water
         forcing_features: (B, pred_steps, N_grid, d_forcing), where index 0
             corresponds to index 1 of init_states

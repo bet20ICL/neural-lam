@@ -5,16 +5,18 @@ from neural_lam import utils
 from neural_lam.models.base_graph_model import BaseGraphModel
 from neural_lam.interaction_net import InteractionNet
 
-class GraphLAM(BaseGraphModel):
+class GCNModel(BaseGraphModel):
     """
-    Full graph-based LAM model that can be used with different (non-hierarchical) graphs.
+    GCN model for weather forecasting
+    
+    Full graph-based LAM model that can be used with different (non-hierarchical )graphs.
     Mainly based on GraphCast, but the model from Keisler (2022) almost identical.
     Used for GC-LAM and L1-LAM in Oskarsson et al. (2023).
     """
     def __init__(self, args):
         super().__init__(args)
 
-        assert not self.hierarchical, "GraphLAM does not use a hierarchical mesh graph"
+        assert not self.hierarchical, "GCN Model does not use a hierarchical mesh graph"
 
         # grid_dim from data + static + batch_static
         mesh_dim = self.mesh_static_features.shape[1]
@@ -36,12 +38,13 @@ class GraphLAM(BaseGraphModel):
                 self.m2m_edge_index,
                 args.hidden_dim, 
                 hidden_layers=args.hidden_layers, 
-                aggr=args.mesh_aggr
-            )
+                aggr=args.mesh_aggr)
             for _ in range(args.processor_layers)
         ]
+        
         self.processor = pyg.nn.Sequential(
-            "mesh_rep, edge_rep", [
+            "mesh_rep, edge_rep", 
+            [
                 (net, "mesh_rep, mesh_rep, edge_rep -> mesh_rep, edge_rep")
                 for net in processor_nets
             ]

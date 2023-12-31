@@ -10,6 +10,7 @@ import wandb
 from neural_lam.models.graph_lam import GraphLAM
 from neural_lam.models.hi_lam import HiLAM
 from neural_lam.models.hi_lam_parallel import HiLAMParallel
+from neural_lam.models.gcn_model import GCNModel
 
 from neural_lam.weather_dataset import WeatherDataset
 from neural_lam import constants, utils
@@ -18,9 +19,10 @@ MODELS = {
     "graph_lam": GraphLAM,
     "hi_lam": HiLAM,
     "hi_lam_parallel": HiLAMParallel,
+    "gcn": GCNModel,
 }
 
-def main():
+def get_args():
     parser = ArgumentParser(description='Train or evaluate NeurWP models for LAM')
 
     # General options
@@ -76,97 +78,50 @@ def main():
         help='Eval model on given data split (val/test) (default: None (train model))')
     parser.add_argument('--n_example_pred', type=int, default=1,
         help='Number of example predictions to plot during evaluation (default: 1)')
-    args = parser.parse_args()
 
+    # Parse
+    args = parser.parse_args()
+    
     # Asserts for arguments
     assert args.model in MODELS, f"Unknown model: {args.model}"
     assert args.step_length <= 3, "Too high step length"
     assert args.eval in (None, "val", "test"), f"Unknown eval setting: {args.eval}"
 
-    # Get an (actual) random run id as a unique identifier
-    random_run_id = random.randint(0, 9999)
+    return args
 
+def main():
+    args = get_args()
+    
     # Set seed
     seed.seed_everything(args.seed)
 
     # Load data
     train_loader = torch.utils.data.DataLoader(
-            WeatherDataset(args.dataset, pred_length=args.ar_steps, split="train",
-                subsample_step=args.step_length, subset=bool(args.subset_ds),
-                control_only=args.control_only),
+            WeatherDataset(
+                args.dataset, 
+                pred_length=args.ar_steps, 
+                split="train",
+                subsample_step=args.step_length, 
+                subset=bool(args.subset_ds),
+                control_only=args.control_only
+            ),
             args.batch_size, shuffle=True, num_workers=args.n_workers)
-    max_pred_length = (65 // args.step_length) - 2 # 19
-    val_loader = torch.utils.data.DataLoader(
-            WeatherDataset(args.dataset, pred_length=max_pred_length, split="val",
-                subsample_step=args.step_length, subset=bool(args.subset_ds),
-                control_only=args.control_only),
-            args.batch_size, shuffle=False, num_workers=args.n_workers)
-
-    # Instatiate model + trainer
-    if torch.cuda.is_available():
-        device_name = "cuda"
-        torch.set_float32_matmul_precision("high") # Allows using Tensor Cores on A100s
-    else:
-        device_name = "cpu"
-
+    # max_pred_length = (65 // args.step_length) - 2 # 19
+    
     # Load model parameters Use new args for model
     model_class = MODELS[args.model]
-    if args.load:
-        model = model_class.load_from_checkpoint(args.load, args=args)
-        if args.restore_opt:
-            # Save for later
-            # Unclear if this works for multi-GPU
-            model.opt_state = torch.load(args.load)["optimizer_states"][0]
-    else:
-        model = model_class(args)
-
-    # Set up logging name
-    prefix = "subset-" if args.subset_ds else ""
-    if args.eval:
-        prefix = prefix + f"eval-{args.eval}-"
-    run_name = f"{prefix}{args.model}-{args.processor_layers}x{args.hidden_dim}-"\
-            f"{time.strftime('%m_%d_%H')}-{random_run_id:04d}"
+    model = model_class(args)
     
-    # callback is a set of functions applied at given points during training
-    # checkpoint_callback saves model checkpoints at regular intervals during training
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            dirpath=f"saved_models/{run_name}", filename="min_val_loss",
-            monitor="val_mean_loss", mode="min", save_last=True)
+    batch = next(iter(train_loader))
+    output = model.training_step(batch)
     
-    logger = pl.loggers.WandbLogger(project=constants.wandb_project, name=run_name,
-            config=args)
+    init_states, target_states, static_features, forcing_windowed = batch
+    # print("Batch shape: ", batch.shape)
+    print("Init states shape: ", init_states.shape)
+    print("Target states shape: ", target_states.shape)
+    print("Static features shape: ", static_features.shape)
+    print("Forcing windowed shape: ", forcing_windowed.shape)
+    print("Output shape: ", output.shape)
     
-    trainer = pl.Trainer(
-            max_epochs=args.epochs, 
-            deterministic=True, 
-            strategy="ddp",
-            accelerator=device_name, 
-            logger=logger, 
-            log_every_n_steps=1,
-            callbacks=[checkpoint_callback], 
-            check_val_every_n_epoch=args.val_interval,
-            precision=args.precision,
-            overfit_batches=1)
-
-    # Only init once, on rank 0 only
-    if trainer.global_rank == 0:
-        utils.init_wandb_metrics(logger) # Do after wandb.init
-
-    if args.eval:
-        if args.eval == "val":
-            eval_loader = val_loader
-        else: # Test
-            eval_loader = torch.utils.data.DataLoader(WeatherDataset(args.dataset,
-                pred_length=max_pred_length, split="test",
-                subsample_step=args.step_length, subset=bool(args.subset_ds)),
-            args.batch_size, shuffle=False, num_workers=args.n_workers)
-
-        print(f"Running evaluation on {args.eval}")
-        trainer.test(model=model, dataloaders=eval_loader)
-    else:
-        # Train model
-        trainer.fit(model=model, train_dataloaders=train_loader,
-                val_dataloaders=val_loader)
-
 if __name__ == "__main__":
     main()
