@@ -2,23 +2,23 @@ import torch
 import torch_geometric as pyg
 
 from torch.nn import ReLU
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GATConv
 
 from neural_lam import utils
 from neural_lam.models.base_graph_model import BaseGraphModel
 
-class GCNModel(BaseGraphModel):
+class GATModel(BaseGraphModel):
     """
-    GCN model for weather forecasting. 
+    GAT model for weather forecasting. 
     
     Don't use any edge features for now.
     
-    Based on GraphCast, but using GCN instead of InteractionNet for GNN layers.
+    Based on GraphCast, but using GAT instead of InteractionNet for GNN layers.
     """
     def __init__(self, args):
         super().__init__(args)
 
-        assert not self.hierarchical, "GCN Model does not use a hierarchical mesh graph"
+        assert not self.hierarchical, "GAT Model does not use a hierarchical mesh graph"
 
         # grid_dim from data + static + batch_static
         mesh_dim = self.mesh_static_features.shape[1]
@@ -35,7 +35,7 @@ class GCNModel(BaseGraphModel):
         # processor
         processor_layers = []
         for _ in range(args.processor_layers):
-            conv = GCNConv(
+            conv = GATConv(
                     in_channels=args.hidden_dim,
                     out_channels=args.hidden_dim)
             act = ReLU(inplace=True)

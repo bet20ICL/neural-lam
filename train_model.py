@@ -4,23 +4,34 @@ import pytorch_lightning as pl
 from lightning_fabric.utilities import seed
 from argparse import ArgumentParser
 import time
+# import matplotlib
+# matplotlib.rcParams["text.usetex"] = False
+
 import matplotlib.pyplot as plt
 import wandb
+import os
 
 from neural_lam.models.graph_lam import GraphLAM
 from neural_lam.models.hi_lam import HiLAM
 from neural_lam.models.hi_lam_parallel import HiLAMParallel
+from neural_lam.models.gcn_model import GCNModel
+from neural_lam.models.gat_model import GATModel
 
 from neural_lam.weather_dataset import WeatherDataset
 from neural_lam import constants, utils
+
+# Required for running jobs on GPU node
+os.environ["WANDB_CONFIG_DIR"] = "/work/ec249/ec249/bet20/.config/wandb"
 
 MODELS = {
     "graph_lam": GraphLAM,
     "hi_lam": HiLAM,
     "hi_lam_parallel": HiLAMParallel,
+    "gcn": GCNModel,
+    "gat": GATModel,
 }
 
-def main():
+def get_args():
     parser = ArgumentParser(description='Train or evaluate NeurWP models for LAM')
 
     # General options
@@ -56,6 +67,8 @@ def main():
         help='Number of GNN layers in processor GNN (default: 4)')
     parser.add_argument('--mesh_aggr', type=str, default="sum",
         help='Aggregation to use for m2m processor GNN layers (sum/mean) (default: sum)')
+    parser.add_argument('--only_atmosphere', type=int, default=0,
+        help='Only use atmospheric variables in grid node features - do not use forcing or static features (default: 0 (false))')
 
     # Training options
     parser.add_argument('--ar_steps', type=int, default=1,
@@ -82,7 +95,11 @@ def main():
     assert args.model in MODELS, f"Unknown model: {args.model}"
     assert args.step_length <= 3, "Too high step length"
     assert args.eval in (None, "val", "test"), f"Unknown eval setting: {args.eval}"
+    
+    return args
 
+def main():
+    args = get_args() 
     # Get an (actual) random run id as a unique identifier
     random_run_id = random.randint(0, 9999)
 
@@ -91,13 +108,15 @@ def main():
 
     # Load data
     train_loader = torch.utils.data.DataLoader(
-            WeatherDataset(args.dataset, pred_length=args.ar_steps, split="train",
+            WeatherDataset(
+                args.dataset, pred_length=args.ar_steps, split="train",
                 subsample_step=args.step_length, subset=bool(args.subset_ds),
                 control_only=args.control_only),
             args.batch_size, shuffle=True, num_workers=args.n_workers)
     max_pred_length = (65 // args.step_length) - 2 # 19
     val_loader = torch.utils.data.DataLoader(
-            WeatherDataset(args.dataset, pred_length=max_pred_length, split="val",
+            WeatherDataset(
+                args.dataset, pred_length=max_pred_length, split="val",
                 subsample_step=args.step_length, subset=bool(args.subset_ds),
                 control_only=args.control_only),
             args.batch_size, shuffle=False, num_workers=args.n_workers)
@@ -106,6 +125,7 @@ def main():
     if torch.cuda.is_available():
         device_name = "cuda"
         torch.set_float32_matmul_precision("high") # Allows using Tensor Cores on A100s
+        print("===== CUDA ENABLED =====")
     else:
         device_name = "cpu"
 
@@ -133,8 +153,11 @@ def main():
             dirpath=f"saved_models/{run_name}", filename="min_val_loss",
             monitor="val_mean_loss", mode="min", save_last=True)
     
-    logger = pl.loggers.WandbLogger(project=constants.wandb_project, name=run_name,
-            config=args)
+    logger = pl.loggers.WandbLogger(
+            project=constants.wandb_project,
+            name=run_name,
+            config=args,
+            offline=True)
     
     trainer = pl.Trainer(
             max_epochs=args.epochs, 

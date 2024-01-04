@@ -73,3 +73,8 @@ tags
 # Coc configuration directory
 .vim
 
+### HPC ###
+slurm-*.out
+
+### VSCode ###
+.vscode

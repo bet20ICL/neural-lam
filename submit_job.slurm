@@ -3,12 +3,15 @@
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --time=00:45:00
+#SBATCH --time=02:00:00
 
 # Replace [budget code] below with your project code (e.g. t01)
 #SBATCH --account=ec249
 
+# texlive
+export PATH=/work/ec249/ec249/bet20/texlive//bin/x86_64-linux:$PATH
+
 # Load the required modules 
 source /work/ec249/ec249/bet20/nlam/bin/activate
 
-srun python train_mode.py --epochs 5
+srun python train_model.py --model gcn

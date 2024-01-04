@@ -8,8 +8,15 @@ class InteractionNet(pyg.nn.MessagePassing):
     """
     Implementation of a generic Interaction Network, from Battaglia et al. (2016)
     """
-    def __init__(self, edge_index, input_dim, update_edges=True, hidden_layers=1,
-            hidden_dim=None, edge_chunk_sizes=None, aggr_chunk_sizes=None, aggr="sum"):
+    def __init__(self, 
+                 edge_index, 
+                 input_dim, 
+                 update_edges=True, 
+                 hidden_layers=1,
+                 hidden_dim=None, 
+                 edge_chunk_sizes=None, 
+                 aggr_chunk_sizes=None, 
+                 aggr="sum"):
         """
         Create a new InteractionNet
 
@@ -18,10 +25,13 @@ class InteractionNet(pyg.nn.MessagePassing):
         update_edges: If new edge representations should be computed and returned
         hidden_layers: Number of hidden layers in MLPs
         hidden_dim: Dimensionality of hidden layers, if None then same as input_dim
+        
+        bet20: aggr_chunk only used in hiearchical models
         edge_chunk_sizes: List of chunks sizes to split edge representation into and
             use separate MLPs for (None = no chunking, same MLP)
         aggr_chunk_sizes: List of chunks sizes to split aggregated node representation
             into and use separate MLPs for (None = no chunking, same MLP)
+            
         aggr: Message aggregation method (sum/mean)
         """
         assert aggr in ("sum", "mean"), f"Unknown aggregation method: {aggr}"
@@ -71,9 +81,12 @@ class InteractionNet(pyg.nn.MessagePassing):
         """
         # Always concatenate to [rec_nodes, send_nodes] for propagation, but only
         # aggregate to rec_nodes
-        node_reps = torch.cat((rec_rep, send_rep), dim=1)
-        edge_rep_aggr, edge_diff = self.propagate(self.edge_index, x=node_reps,
-                edge_attr=edge_rep)
+        # bet20: this is assuming (N_send, d_h) = (N_rec, d_h)
+        node_reps = torch.cat((rec_rep, send_rep), dim=1) # (N_rec, 2*d_h)
+        edge_rep_aggr, edge_diff = self.propagate(
+                                        self.edge_index, 
+                                        x=node_reps,
+                                        edge_attr=edge_rep) # (N_rec, d_h), (M, d_h)
         rec_diff = self.aggr_mlp(torch.cat((rec_rep, edge_rep_aggr), dim=-1))
 
         # Residual connections

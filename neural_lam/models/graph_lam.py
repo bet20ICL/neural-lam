@@ -57,6 +57,10 @@ class GraphLAM(BaseGraphModel):
     def embedd_mesh_nodes(self):
         """
         Embedd static mesh features
+        
+        bet20: 
+        Used in predeict_step
+        
         Returns tensor of shape (N_mesh, d_h)
         """
         return self.mesh_embedder(self.mesh_static_features) # (N_mesh, d_h)
@@ -65,6 +69,9 @@ class GraphLAM(BaseGraphModel):
         """
         Process step of embedd-process-decode framework
         Processes the representation on the mesh, possible in multiple steps
+        
+        bet20:
+        Used in predict_step
 
         mesh_rep: has shape (B, N_mesh, d_h)
         Returns mesh_rep: (B, N_mesh, d_h)
