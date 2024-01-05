@@ -67,8 +67,6 @@ def get_args():
         help='Number of GNN layers in processor GNN (default: 4)')
     parser.add_argument('--mesh_aggr', type=str, default="sum",
         help='Aggregation to use for m2m processor GNN layers (sum/mean) (default: sum)')
-    parser.add_argument('--only_atmosphere', type=int, default=0,
-        help='Only use atmospheric variables in grid node features - do not use forcing or static features (default: 0 (false))')
 
     # Training options
     parser.add_argument('--ar_steps', type=int, default=1,

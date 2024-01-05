@@ -62,6 +62,7 @@ class BaseGraphModel(ARModel):
                 args.hidden_dim,
                 hidden_layers=args.hidden_layers,
                 update_edges=False)
+        
         self.encoding_grid_mlp = utils.make_mlp([args.hidden_dim]
                 + self.mlp_blueprint_end)
 
@@ -108,23 +109,43 @@ class BaseGraphModel(ARModel):
         batch_size = prev_state.shape[0]
 
         # Create full grid node features of shape (B, N_grid, grid_dim)
-        grid_features = torch.cat((prev_state, prev_prev_state, batch_static_features,
-            forcing, self.expand_to_batch(self.grid_static_features, batch_size)),
-            dim=-1)
+        # bet20:
+        # where grid_dim = 2*self.grid_state_dim + grid_static_dim + self.grid_forcing_dim + self.batch_static_feature_dim
+        if self.args.dataset in ["era5_uk_reduced"]:
+            grid_features = torch.cat(
+                (
+                    prev_state, 
+                    prev_prev_state, 
+                    self.expand_to_batch(self.grid_static_features, batch_size)
+                ), dim=-1)
+        else:
+            grid_features = torch.cat(
+                (
+                    prev_state, 
+                    prev_prev_state, 
+                    batch_static_features,
+                    forcing, 
+                    self.expand_to_batch(self.grid_static_features, batch_size)
+                ), dim=-1)
 
         # Embedd all features
+        # bet20:
+        # Embedders are just MLPs
         grid_emb = self.grid_embedder(grid_features) # (B, N_grid, d_h)
         g2m_emb = self.g2m_embedder(self.g2m_features) # (M_g2m, d_h)
         m2g_emb = self.m2g_embedder(self.m2g_features) # (M_m2g, d_h)
-        mesh_emb = self.embedd_mesh_nodes()
+        mesh_emb = self.embedd_mesh_nodes() # (N_mesh, d_h)
 
         # Map from grid to mesh
-        mesh_emb_expanded = self.expand_to_batch(mesh_emb, batch_size) # (B, N_mesh, d_h)
-        g2m_emb_expanded = self.expand_to_batch(g2m_emb, batch_size)
+        mesh_emb_expanded = self.expand_to_batch(mesh_emb, batch_size) # (B, N_mesh, d_h) <- added batch dimension
+        g2m_emb_expanded = self.expand_to_batch(g2m_emb, batch_size) # (B, N_mesh, d_h)
 
         # This also splits representation into grid and mesh
-        mesh_rep = self.g2m_gnn(grid_emb, mesh_emb_expanded,
+        mesh_rep = self.g2m_gnn(
+                grid_emb, 
+                mesh_emb_expanded,
                 g2m_emb_expanded) # (B, N_mesh, d_h)
+        
         # Also MLP with residual for grid representation
         grid_rep = grid_emb + self.encoding_grid_mlp(grid_emb) # (B, N_grid, d_h)
 

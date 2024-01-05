@@ -15,6 +15,7 @@ class ARModel(pl.LightningModule):
     """
     def __init__(self, args):
         super().__init__()
+        self.args = args
         self.save_hyperparameters()
         self.lr = args.lr
 

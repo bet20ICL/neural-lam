@@ -2,7 +2,7 @@ import torch
 import torch_geometric as pyg
 
 from torch.nn import ReLU
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCN
 
 from neural_lam import utils
 from neural_lam.models.base_graph_model import BaseGraphModel
@@ -33,23 +33,12 @@ class GCNModel(BaseGraphModel):
 
         # GNNs
         # processor
-        processor_layers = []
-        for _ in range(args.processor_layers):
-            conv = GCNConv(
-                    in_channels=args.hidden_dim,
-                    out_channels=args.hidden_dim)
-            act = ReLU(inplace=True)
-            
-            processor_layers.extend(
-                [
-                    (conv, "mesh_rep, edge_index -> mesh_rep"), 
-                    act
-                ]
-            )
-        
-        self.processor = pyg.nn.Sequential(
-            "mesh_rep, edge_index", 
-            processor_layers
+        self.processor = GCN(
+            in_channels=args.hidden_dim,
+            hidden_channels=args.hidden_dim,
+            num_layers=args.processor_layers,
+            out_channels=args.hidden_dim,
+            act=ReLU(inplace=True),
         )
 
     def get_num_mesh(self):
@@ -80,5 +69,5 @@ class GCNModel(BaseGraphModel):
         # m2m_emb_expanded = self.expand_to_batch(m2m_emb, batch_size) # (B, M_mesh, d_h)
 
         # mesh_rep, _ = self.processor(mesh_rep, m2m_emb) # (B, N_mesh, d_h)
-        mesh_rep = self.processor(mesh_rep, self.m2m_edge_index,) # (B, N_mesh, d_h)
+        mesh_rep = self.processor(mesh_rep, self.m2m_edge_index) # (B, N_mesh, d_h)
         return mesh_rep
