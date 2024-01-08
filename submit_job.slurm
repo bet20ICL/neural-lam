@@ -14,4 +14,4 @@ export PATH=/work/ec249/ec249/bet20/texlive//bin/x86_64-linux:$PATH
 # Load the required modules 
 source /work/ec249/ec249/bet20/nlam/bin/activate
 
-srun python train_model.py --model gcn
+srun python train_model.py --model gat

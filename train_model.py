@@ -4,12 +4,9 @@ import pytorch_lightning as pl
 from lightning_fabric.utilities import seed
 from argparse import ArgumentParser
 import time
-# import matplotlib
-# matplotlib.rcParams["text.usetex"] = False
-
-import matplotlib.pyplot as plt
-import wandb
 import os
+
+import torch_geometric as pyg
 
 from neural_lam.models.graph_lam import GraphLAM
 from neural_lam.models.hi_lam import HiLAM
@@ -87,6 +84,7 @@ def get_args():
         help='Eval model on given data split (val/test) (default: None (train model))')
     parser.add_argument('--n_example_pred', type=int, default=1,
         help='Number of example predictions to plot during evaluation (default: 1)')
+    parser.add_argument('--summary', type=int, default=0, help='Print summary of model without training (default: 0 (false))')
     args = parser.parse_args()
 
     # Asserts for arguments
@@ -105,14 +103,15 @@ def main():
     seed.seed_everything(args.seed)
 
     # Load data
-    train_loader = torch.utils.data.DataLoader(
+    # maybe use torch.utils.data.DataLoader
+    train_loader = pyg.loader.DataLoader(
             WeatherDataset(
                 args.dataset, pred_length=args.ar_steps, split="train",
                 subsample_step=args.step_length, subset=bool(args.subset_ds),
                 control_only=args.control_only),
             args.batch_size, shuffle=True, num_workers=args.n_workers)
     max_pred_length = (65 // args.step_length) - 2 # 19
-    val_loader = torch.utils.data.DataLoader(
+    val_loader = pyg.loader.DataLoader(
             WeatherDataset(
                 args.dataset, pred_length=max_pred_length, split="val",
                 subsample_step=args.step_length, subset=bool(args.subset_ds),
@@ -124,6 +123,7 @@ def main():
         device_name = "cuda"
         torch.set_float32_matmul_precision("high") # Allows using Tensor Cores on A100s
         print("===== CUDA ENABLED =====")
+        print("Using deterministic algorithms:", torch.are_deterministic_algorithms_enabled())
     else:
         device_name = "cpu"
 
@@ -137,6 +137,9 @@ def main():
             model.opt_state = torch.load(args.load)["optimizer_states"][0]
     else:
         model = model_class(args)
+        
+    if args.summary:
+        pass
 
     # Set up logging name
     prefix = "subset-" if args.subset_ds else ""

@@ -4,21 +4,28 @@ import torch
 import numpy as np
 import datetime as dt
 
+from torch_geometric.data import Data
 from neural_lam import utils, constants
 
 class WeatherDataset(torch.utils.data.Dataset):
     """
     For our dataset:
-    N_t' = 65
-    N_t = 65//subsample_step (= 21 for 3h steps)
-    N_x = 268
-    N_y = 238
-    N_grid = 268x238 = 63784
+    N_t' = 65 (total number of time steps in forecast)
+    N_t = 65//subsample_step (= 21 for 3h steps) (number of time steps in sample)
+    N_x = 268 (width)
+    N_y = 238 (height)
+    N_grid = 268x238 = 63784 (total number of grid nodes)
     d_features = 17 (d_features' = 18)
     d_forcing = 5
     """
     def __init__(self, dataset_name, pred_length=19, split="train", subsample_step=3,
             standardize=True, subset=False, control_only=False):
+        """
+        bet20:
+        pred_length: Number of time steps to predict. default: 19 (for 3h timesteps = 57 h forecast leadtime)
+        split: Which split of the dataset to use default: "train"
+        
+        """
         super().__init__()
 
         assert split in ("train", "val", "test"), "Unknown dataset split"
@@ -28,6 +35,9 @@ class WeatherDataset(torch.utils.data.Dataset):
         sample_paths = glob.glob(os.path.join(self.sample_dir_path, member_file_regexp))
         self.sample_names = [path.split("/")[-1][4:-4] for path in sample_paths]
         # Now on form "yyymmddhh_mbrXXX"
+        # bet20:
+        # mbrXXX denotes which member of the ensemble forecast (5 total)
+        # i.e. from "nwp_2020010100_mbr000.npy" to "2020010100_mbr000"
 
         if subset:
             self.sample_names = self.sample_names[:50] # Limit to 50 samples
@@ -175,5 +185,4 @@ class WeatherDataset(torch.utils.data.Dataset):
             forcing_features[2:],
             ), dim=2) # (sample_len-2, N_grid, 3*d_forcing)
         # Now index 0 of ^ corresponds to forcing at index 0-2 of sample
-
         return init_states, target_states, static_features, forcing_windowed

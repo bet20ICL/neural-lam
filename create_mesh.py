@@ -130,6 +130,7 @@ def main():
             'from bottom up (default: None (no limit))')
     parser.add_argument('--hierarchical', type=int, default=0,
         help='Generate hierarchical mesh graph (default: 0, no)')
+
     args = parser.parse_args()
 
     # Load grid positions
@@ -137,7 +138,14 @@ def main():
     graph_dir_path = os.path.join("graphs", args.graph)
     os.makedirs(graph_dir_path, exist_ok=True)
 
-    xy = np.load(os.path.join(static_dir_path, "nwp_xy.npy"))
+    # Two grids 
+    # Grid 1: latitude
+    # Grid 2: longitude
+    # in Lambert coordinates
+    xy = np.load(os.path.join(static_dir_path, "nwp_xy.npy")) # (2, Nx, Ny)     
+    
+    if args.dataset == "era5":
+        return
 
     grid_xy = torch.tensor(xy)
     pos_max = torch.max(torch.abs(grid_xy))

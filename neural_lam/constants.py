@@ -1,7 +1,7 @@
 # import cartopy
 import numpy as np
 
-wandb_project = "neural-lam"
+wandb_project = "neural-lam-work"
 
 seconds_in_year = 365*24*60*60 # Assuming no leap years in dataset (2024 is next)
 

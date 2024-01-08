@@ -15,6 +15,7 @@ def main():
     # -- Static grid node features --
     grid_xy = torch.tensor(np.load(os.path.join(static_dir_path, "nwp_xy.npy")
         )) # (2, N_x, N_y)
+    # N_grid = N_x * N_y
     grid_xy = grid_xy.flatten(1,2).T # (N_grid, 2)
     pos_max = torch.max(torch.abs(grid_xy))
     grid_xy = grid_xy / pos_max  # Divide by maximum coordinate
