@@ -78,3 +78,6 @@ slurm-*.out
 
 ### VSCode ###
 .vscode
+
+### Scratch ###
+dataset_scratch

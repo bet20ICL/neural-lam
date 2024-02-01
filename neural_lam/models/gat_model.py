@@ -75,13 +75,13 @@ class GATModel(BaseGraphModel):
         torch.use_deterministic_algorithms(False)
         # Process each mesh in batch separately
         # This is required since GAT does not support batched processing
-        mesh_rep = torch.stack(
-            [
-                self.processor(graph, edge_index=self.m2m_edge_index)
-                for graph in mesh_rep
-            ],
-            dim=0,
-        )
+        # mesh_rep = torch.stack(
+        #     [
+        #         self.processor(graph, edge_index=self.m2m_edge_index)
+        #         for graph in mesh_rep
+        #     ],
+        #     dim=0,
+        # )
+        mesh_rep = self.processor(mesh_rep, self.m2m_edge_index) # (B, N_mesh, d_h)
         torch.use_deterministic_algorithms(determ)
-        # mesh_rep = self.processor(mesh_rep, self.m2m_edge_index) # (B, N_mesh, d_h)
         return mesh_rep

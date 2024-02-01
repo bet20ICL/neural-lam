@@ -104,9 +104,24 @@ class ARModel(pl.LightningModule):
         prev_prev_state = init_states[:,0]
         prev_state = init_states[:,1]
         prediction_list = []
-        pred_steps = forcing_features.shape[1]
+        pred_steps = true_states.shape[1]
 
         for i in range(pred_steps):
+            # Hack to get era5 dataset working
+            if self.args.dataset == "era5_uk_reduced":
+                predicted_state = self.predict_step(prev_state, prev_prev_state,
+                        batch_static_features, forcing_features) # (B, N_grid, d_f)
+
+                # Overwrite border with true state
+                new_state = self.border_mask*border_state +\
+                        self.interior_mask*predicted_state
+                prediction_list.append(new_state)
+
+                # Upate conditioning states
+                prev_prev_state = prev_state
+                prev_state = new_state
+                continue
+            
             # bet20:
             # this takes a slice along the 1st index (pred_steps)
             # equivalent to [:, i, :, :]
@@ -162,6 +177,10 @@ class ARModel(pl.LightningModule):
 
         prediction = self.unroll_prediction(init_states, batch_static_features,
                 forcing_features, target_states) # (B, pred_steps, N_grid, d_f)
+        
+        # If using PyG DataBatch object
+        # prediction = self.unroll_prediction(init_states[1], batch_static_features[1],
+        #         forcing_features[1], target_states[1]) # (B, pred_steps, N_grid, d_f)
 
         return prediction, target_states
 

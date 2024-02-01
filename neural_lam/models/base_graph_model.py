@@ -30,14 +30,23 @@ class BaseGraphModel(ARModel):
         # bet20:
         # self.N_grid: number of grid nodes
         # self.N_mesh: number of mesh nodes
-        self.N_grid, grid_static_dim = self.grid_static_features.shape # 63784 = 268x238
-        self.N_mesh, N_mesh_ignore = self.get_num_mesh()
-        print(f"Loaded graph with {self.N_grid + self.N_mesh} nodes "+
-                f"({self.N_grid} grid, {self.N_mesh} mesh)")
+        if args.dataset == "era5_uk_reduced":
+            self.grid_state_dim = 42
+            self.N_grid = 1440 * 721
+            grid_static_dim = 0
+            self.N_mesh, N_mesh_ignore = self.get_num_mesh()
+            print(f"Loaded graph with {self.N_grid + self.N_mesh} nodes "+
+                    f"({self.N_grid} grid, {self.N_mesh} mesh)")
+            grid_dim = 2*self.grid_state_dim
+        else:
+            self.N_grid, grid_static_dim = self.grid_static_features.shape # 63784 = 268x238
+            self.N_mesh, N_mesh_ignore = self.get_num_mesh()
+            print(f"Loaded graph with {self.N_grid + self.N_mesh} nodes "+
+                    f"({self.N_grid} grid, {self.N_mesh} mesh)")
 
-        # grid_dim from data + static + batch_static
-        grid_dim = 2*self.grid_state_dim + grid_static_dim + self.grid_forcing_dim +\
-            self.batch_static_feature_dim
+            # grid_dim from data + static + batch_static
+            grid_dim = 2*self.grid_state_dim + grid_static_dim + self.grid_forcing_dim +\
+                self.batch_static_feature_dim
             
         # bet20:
         # number of edges in subgraphs
@@ -116,7 +125,6 @@ class BaseGraphModel(ARModel):
                 (
                     prev_state, 
                     prev_prev_state, 
-                    self.expand_to_batch(self.grid_static_features, batch_size)
                 ), dim=-1)
         else:
             grid_features = torch.cat(

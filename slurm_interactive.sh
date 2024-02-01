@@ -1,0 +1,1 @@
+srun --exclusive --nodes=1 --time=02:00:00 --partition=gpu --gres=gpu:1 --qos=gpu --account=ec249 --pty /usr/bin/bash --login

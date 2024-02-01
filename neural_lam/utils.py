@@ -25,6 +25,17 @@ def load_dataset_stats(dataset_name, device="cpu"):
     }
 
 def load_static_data(dataset_name, device="cpu"):
+    if dataset_name == "era5_uk_reduced":
+        return {
+            "border_mask": torch.empty(0),
+            "grid_static_features": torch.empty(0),
+            "step_diff_mean": torch.Tensor([0.]),
+            "step_diff_std": torch.Tensor([1.]),
+            "data_mean": torch.Tensor([0.]),
+            "data_std": torch.Tensor([1.]),
+            "param_weights": torch.Tensor([1.]),
+        }
+        
     static_dir_path = os.path.join("data", dataset_name, "static")
     loads_file = lambda fn: torch.load(os.path.join(static_dir_path, fn),
             map_location=device)

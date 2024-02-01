@@ -15,6 +15,7 @@ from neural_lam.models.gcn_model import GCNModel
 from neural_lam.models.gat_model import GATModel
 
 from neural_lam.weather_dataset import WeatherDataset
+from neural_lam.era5_uk_dataset import ERA5UKDataset
 from neural_lam import constants, utils
 
 # Required for running jobs on GPU node
@@ -96,27 +97,50 @@ def get_args():
 
 def main():
     args = get_args() 
-    # Get an (actual) random run id as a unique identifier
-    random_run_id = random.randint(0, 9999)
 
     # Set seed
     seed.seed_everything(args.seed)
 
     # Load data
     # maybe use torch.utils.data.DataLoader
-    train_loader = pyg.loader.DataLoader(
-            WeatherDataset(
-                args.dataset, pred_length=args.ar_steps, split="train",
-                subsample_step=args.step_length, subset=bool(args.subset_ds),
-                control_only=args.control_only),
-            args.batch_size, shuffle=True, num_workers=args.n_workers)
-    max_pred_length = (65 // args.step_length) - 2 # 19
-    val_loader = pyg.loader.DataLoader(
-            WeatherDataset(
-                args.dataset, pred_length=max_pred_length, split="val",
-                subsample_step=args.step_length, subset=bool(args.subset_ds),
-                control_only=args.control_only),
-            args.batch_size, shuffle=False, num_workers=args.n_workers)
+    if args.dataset == "era5_uk_reduced":
+        train_loader = pyg.loader.DataLoader(
+                ERA5UKDataset(
+                    args.dataset,
+                    pred_length=args.ar_steps,
+                    split="train",
+                    subsample_step=args.step_length,
+                    subset=bool(args.subset_ds),
+                    control_only=args.control_only,
+                    standardize=False,
+                ),
+                args.batch_size, shuffle=True, num_workers=args.n_workers)
+        max_pred_length = (65 // args.step_length) - 2 # 19
+        val_loader = pyg.loader.DataLoader(
+                ERA5UKDataset(
+                    args.dataset,
+                    pred_length=max_pred_length,
+                    split="val",
+                    subsample_step=args.step_length,
+                    subset=bool(args.subset_ds),
+                    control_only=args.control_only,
+                    standardize=False,
+                ),
+                args.batch_size, shuffle=False, num_workers=args.n_workers)
+    else:
+        train_loader = pyg.loader.DataLoader(
+                WeatherDataset(
+                    args.dataset, pred_length=args.ar_steps, split="train",
+                    subsample_step=args.step_length, subset=bool(args.subset_ds),
+                    control_only=args.control_only),
+                args.batch_size, shuffle=True, num_workers=args.n_workers)
+        max_pred_length = (65 // args.step_length) - 2 # 19
+        val_loader = pyg.loader.DataLoader(
+                WeatherDataset(
+                    args.dataset, pred_length=max_pred_length, split="val",
+                    subsample_step=args.step_length, subset=bool(args.subset_ds),
+                    control_only=args.control_only),
+                args.batch_size, shuffle=False, num_workers=args.n_workers)
 
     # Instatiate model + trainer
     if torch.cuda.is_available():
@@ -138,13 +162,12 @@ def main():
     else:
         model = model_class(args)
         
-    if args.summary:
-        pass
-
     # Set up logging name
     prefix = "subset-" if args.subset_ds else ""
     if args.eval:
         prefix = prefix + f"eval-{args.eval}-"
+    # Get an (actual) random run id as a unique identifier
+    random_run_id = random.randint(0, 9999)
     run_name = f"{prefix}{args.model}-{args.processor_layers}x{args.hidden_dim}-"\
             f"{time.strftime('%m_%d_%H')}-{random_run_id:04d}"
     

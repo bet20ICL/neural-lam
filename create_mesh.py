@@ -9,6 +9,8 @@ import torch_geometric as pyg
 import os
 from torch_geometric.utils.convert import from_networkx
 
+from graphcast_mesh import create_graphcast_mesh
+
 def plot_graph(graph, title=None):
     fig, axis = plt.subplots(figsize=(8, 8), dpi=200) # W,H
     edge_index = graph.edge_index
@@ -132,6 +134,12 @@ def main():
         help='Generate hierarchical mesh graph (default: 0, no)')
 
     args = parser.parse_args()
+    
+    # ERA5 dataset has different graph generation
+    if args.dataset == "era5_uk_reduced":
+        print("Creating graph from ERA5 dataset")
+        create_graphcast_mesh(args)  
+        return
 
     # Load grid positions
     static_dir_path = os.path.join("data", args.dataset, "static")
@@ -143,9 +151,6 @@ def main():
     # Grid 2: longitude
     # in Lambert coordinates
     xy = np.load(os.path.join(static_dir_path, "nwp_xy.npy")) # (2, Nx, Ny)     
-    
-    if args.dataset == "era5":
-        return
 
     grid_xy = torch.tensor(xy)
     pos_max = torch.max(torch.abs(grid_xy))

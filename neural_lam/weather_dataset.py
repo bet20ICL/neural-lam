@@ -185,4 +185,13 @@ class WeatherDataset(torch.utils.data.Dataset):
             forcing_features[2:],
             ), dim=2) # (sample_len-2, N_grid, 3*d_forcing)
         # Now index 0 of ^ corresponds to forcing at index 0-2 of sample
+        
+        # If using PyG data object
+        # data = Data(
+        #     init_states=init_states,
+        #     target_states=target_states,
+        #     static_features=static_features,
+        #     forcing_windowed=forcing_windowed,
+        # )
+        # return data
         return init_states, target_states, static_features, forcing_windowed

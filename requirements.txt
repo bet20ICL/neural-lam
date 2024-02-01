@@ -22,3 +22,6 @@ cdsapi
 xarray
 zarr
 # h3-py
+
+# GraphCast
+dgl

@@ -4,11 +4,19 @@ from argparse import ArgumentParser
 import numpy as np
 import torch
 
+from era5_data_proc import create_era5_grid_features
+
 def main():
     parser = ArgumentParser(description='Training arguments')
     parser.add_argument('--dataset', type=str, default="meps_example",
         help='Dataset to compute weights for (default: meps_example)')
     args = parser.parse_args()
+    
+    # ERA5 dataset has different grid feature creation
+    if args.dataset == "era5_uk_reduced":
+        print("Creating grid features for ERA dataset")
+        create_era5_grid_features(args)
+        return
 
     static_dir_path = os.path.join("data", args.dataset, "static")
 
