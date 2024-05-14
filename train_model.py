@@ -15,17 +15,19 @@ from neural_lam.models.hi_lam import HiLAM
 from neural_lam.models.hi_lam_parallel import HiLAMParallel
 from neural_lam.weather_dataset import WeatherDataset
 
+import os
+# Required for running jobs on GPU node
+os.environ["WANDB_CONFIG_DIR"] = "/work/ec249/ec249/bet20/.config/wandb"
+wandb_mode = os.environ.get('WANDB_MODE')
+print(f"WANDB_MODE: {wandb_mode}")
+
 MODELS = {
     "graph_lam": GraphLAM,
     "hi_lam": HiLAM,
     "hi_lam_parallel": HiLAMParallel,
 }
 
-
-def main():
-    """
-    Main function for training and evaluating models
-    """
+def get_args():
     parser = ArgumentParser(
         description="Train or evaluate NeurWP models for LAM"
     )
@@ -149,7 +151,7 @@ def main():
         "--loss",
         type=str,
         default="wmse",
-        help="Loss function to use, see metric.py (default: wmse)",
+        help="Loss function to use, see metrics.py (default: wmse)",
     )
     parser.add_argument(
         "--step_length",
@@ -167,6 +169,13 @@ def main():
         default=1,
         help="Number of epochs training between each validation run "
         "(default: 1)",
+    )
+    parser.add_argument(
+        "--standardize",
+        type=int,
+        default=1,
+        help="Standardize dataset "
+        "(default: 1 (true))",
     )
 
     # Evaluation options
@@ -193,37 +202,55 @@ def main():
         "val",
         "test",
     ), f"Unknown eval setting: {args.eval}"
-
-    # Get an (actual) random run id as a unique identifier
-    random_run_id = random.randint(0, 9999)
+    
+    return args
+    
+def main():
+    """
+    Main function for training and evaluating models
+    """
+    print("Main Function")
+    args = get_args()
 
     # Set seed
     seed.seed_everything(args.seed)
-
-    # Load data
-    train_loader = torch.utils.data.DataLoader(
-        WeatherDataset(
+    
+    if args.dataset == "era5":
+        pass
+    elif args.dataset == "meps_example":
+        train_set = WeatherDataset(
             args.dataset,
             pred_length=args.ar_steps,
             split="train",
             subsample_step=args.step_length,
+            standardize=bool(args.standardize),
             subset=bool(args.subset_ds),
             control_only=args.control_only,
-        ),
-        args.batch_size,
-        shuffle=True,
-        num_workers=args.n_workers,
-    )
-    max_pred_length = (65 // args.step_length) - 2  # 19
-    val_loader = torch.utils.data.DataLoader(
-        WeatherDataset(
+        )
+        
+        max_pred_length = (65 // args.step_length) - 2  # 19
+        val_set = WeatherDataset(
             args.dataset,
             pred_length=max_pred_length,
             split="val",
             subsample_step=args.step_length,
+            standardize=bool(args.standardize),
             subset=bool(args.subset_ds),
             control_only=args.control_only,
-        ),
+        )
+    else:
+        raise ValueError(f"Unknown dataset: {args.dataset}")
+
+    # Load data
+    train_loader = torch.utils.data.DataLoader(
+        train_set,
+        args.batch_size,
+        shuffle=True,
+        num_workers=args.n_workers,
+    )
+    
+    val_loader = torch.utils.data.DataLoader(
+        val_set,
         args.batch_size,
         shuffle=False,
         num_workers=args.n_workers,
@@ -235,6 +262,8 @@ def main():
         torch.set_float32_matmul_precision(
             "high"
         )  # Allows using Tensor Cores on A100s
+        print("===== CUDA ENABLED =====")
+        print("Using deterministic algorithms:", torch.are_deterministic_algorithms_enabled())
     else:
         device_name = "cpu"
 
@@ -248,10 +277,14 @@ def main():
             model.opt_state = torch.load(args.load)["optimizer_states"][0]
     else:
         model = model_class(args)
+    print("===== Model initialized =====")
 
+    # Make run name
     prefix = "subset-" if args.subset_ds else ""
     if args.eval:
         prefix = prefix + f"eval-{args.eval}-"
+    # Get an (actual) random run id as a unique identifier
+    random_run_id = random.randint(0, 9999)
     run_name = (
         f"{prefix}{args.model}-{args.processor_layers}x{args.hidden_dim}-"
         f"{time.strftime('%m_%d_%H')}-{random_run_id:04d}"
@@ -264,8 +297,12 @@ def main():
         save_last=True,
     )
     logger = pl.loggers.WandbLogger(
-        project=constants.WANDB_PROJECT, name=run_name, config=args
+        project=constants.WANDB_PROJECT,
+        name=run_name,
+        config=args,
+        offline=True,
     )
+    print("===== Logger initialized =====")
     trainer = pl.Trainer(
         max_epochs=args.epochs,
         deterministic=True,
@@ -281,7 +318,8 @@ def main():
     # Only init once, on rank 0 only
     if trainer.global_rank == 0:
         utils.init_wandb_metrics(logger)  # Do after wandb.init
-
+    print("===== Trainer initialized =====")
+    
     if args.eval:
         if args.eval == "val":
             eval_loader = val_loader
