@@ -14,6 +14,7 @@ from neural_lam.models.graph_lam import GraphLAM
 from neural_lam.models.hi_lam import HiLAM
 from neural_lam.models.hi_lam_parallel import HiLAMParallel
 from neural_lam.weather_dataset import WeatherDataset
+from neural_lam.era5_dataset import ERA5UKDataset
 
 import os
 # Required for running jobs on GPU node
@@ -216,7 +217,15 @@ def main():
     seed.seed_everything(args.seed)
     
     if args.dataset == "era5":
-        pass
+        train_set = ERA5UKDataset(
+            args.dataset,
+            split="train",
+        )
+        
+        val_set = ERA5UKDataset(
+            args.dataset,
+            split="val",
+        )
     elif args.dataset == "meps_example":
         train_set = WeatherDataset(
             args.dataset,

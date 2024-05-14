@@ -12,6 +12,7 @@ from neural_lam import constants, era5_constants
 from neural_lam.weather_dataset import WeatherDataset
 
 def create_era5_parameter_weights(args, static_dir_path):
+    # TODO: calculate correct mean and std
     mean = torch.tensor([0.])
     std = torch.tensor([1.])
     
@@ -25,6 +26,7 @@ def create_era5_parameter_weights(args, static_dir_path):
     torch.save(std, os.path.join(static_dir_path, "parameter_std.pt"))
     # torch.save(flux_stats, os.path.join(static_dir_path, "flux_stats.pt"))
     
+    # TODO: calculate correct step difference
     diff_mean = torch.tensor([0.])
     diff_std = torch.tensor([1.])
     print("Saving one-step difference mean and std.-dev...")
@@ -46,6 +48,7 @@ def create_era5_parameter_weights(args, static_dir_path):
     # )
     # levels = [int(i) for i in ['50', '150', '250', '400', '500', '600', '850', '1000']]
     
+    # TODO: make correct parameter weights for ERA5 dataset
     parameter_weights = np.array([1.0])
     print("Saving parameter weights...")
     np.save(

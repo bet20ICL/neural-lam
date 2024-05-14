@@ -24,7 +24,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         pred_length=6, 
         split="train", 
         subsample_step=6,
-        standardize=True,
+        standardize=False,
         subset=False,
         control_only=False
     ):
