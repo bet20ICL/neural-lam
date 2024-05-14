@@ -25,6 +25,7 @@ class ARModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.lr = args.lr
+        self.constants = args.constants
 
         # Load static features for grid/data
         static_data_dict = utils.load_static_data(args.dataset)
@@ -37,11 +38,11 @@ class ARModel(pl.LightningModule):
         self.output_std = bool(args.output_std)
         if self.output_std:
             self.grid_output_dim = (
-                2 * constants.GRID_STATE_DIM
+                2 * self.constants.GRID_STATE_DIM
             )  # Pred. dim. in grid cell
         else:
             self.grid_output_dim = (
-                constants.GRID_STATE_DIM
+                self.constants.GRID_STATE_DIM
             )  # Pred. dim. in grid cell
 
             # Store constant per-variable std.-dev. weighting
@@ -59,9 +60,9 @@ class ARModel(pl.LightningModule):
             grid_static_dim,
         ) = self.grid_static_features.shape  # 63784 = 268x238
         self.grid_dim = (
-            2 * constants.GRID_STATE_DIM
+            2 * self.constants.GRID_STATE_DIM
             + grid_static_dim
-            + constants.GRID_FORCING_DIM
+            + self.constants.GRID_FORCING_DIM
         )
 
         # Instantiate loss function
@@ -246,7 +247,7 @@ class ARModel(pl.LightningModule):
         # Log loss per time step forward and mean
         val_log_dict = {
             f"val_loss_unroll{step}": time_step_loss[step - 1]
-            for step in constants.VAL_STEP_LOG_ERRORS
+            for step in self.constants.VAL_STEP_LOG_ERRORS
         }
         val_log_dict["val_mean_loss"] = mean_loss
         self.log_dict(
@@ -294,7 +295,7 @@ class ARModel(pl.LightningModule):
         # Log loss per time step forward and mean
         test_log_dict = {
             f"test_loss_unroll{step}": time_step_loss[step - 1]
-            for step in constants.VAL_STEP_LOG_ERRORS
+            for step in self.constants.VAL_STEP_LOG_ERRORS
         }
         test_log_dict["test_mean_loss"] = mean_loss
 
@@ -328,7 +329,7 @@ class ARModel(pl.LightningModule):
         spatial_loss = self.loss(
             prediction, target, pred_std, average_grid=False
         )  # (B, pred_steps, num_grid_nodes)
-        log_spatial_losses = spatial_loss[:, constants.VAL_STEP_LOG_ERRORS - 1]
+        log_spatial_losses = spatial_loss[:, self.constants.VAL_STEP_LOG_ERRORS - 1]
         self.spatial_loss_maps.append(log_spatial_losses)
         # (B, N_log, num_grid_nodes)
 
@@ -348,6 +349,7 @@ class ARModel(pl.LightningModule):
 
     def plot_examples(self, batch, n_examples, prediction=None):
         """
+        (Used in test_step only)
         Plot the first n_examples forecasts from batch
 
         batch: batch with data to plot corresponding forecasts for
@@ -405,8 +407,8 @@ class ARModel(pl.LightningModule):
                     )
                     for var_i, (var_name, var_unit, var_vrange) in enumerate(
                         zip(
-                            constants.PARAM_NAMES_SHORT,
-                            constants.PARAM_UNITS,
+                            self.constants.PARAM_NAMES_SHORT,
+                            self.constants.PARAM_UNITS,
                             var_vranges,
                         )
                     )
@@ -417,7 +419,7 @@ class ARModel(pl.LightningModule):
                     {
                         f"{var_name}_example_{example_i}": wandb.Image(fig)
                         for var_name, fig in zip(
-                            constants.PARAM_NAMES_SHORT, var_figs
+                            self.constants.PARAM_NAMES_SHORT, var_figs
                         )
                     }
                 )
@@ -441,6 +443,7 @@ class ARModel(pl.LightningModule):
 
     def create_metric_log_dict(self, metric_tensor, prefix, metric_name):
         """
+        (Used in val and test step)
         Put together a dict with everything to log for one metric.
         Also saves plots as pdf and csv if using test prefix.
 
@@ -471,9 +474,9 @@ class ARModel(pl.LightningModule):
             )
 
         # Check if metrics are watched, log exact values for specific vars
-        if full_log_name in constants.METRICS_WATCH:
-            for var_i, timesteps in constants.VAR_LEADS_METRICS_WATCH.items():
-                var = constants.PARAM_NAMES_SHORT[var_i]
+        if full_log_name in self.constants.METRICS_WATCH:
+            for var_i, timesteps in self.constants.VAR_LEADS_METRICS_WATCH.items():
+                var = self.constants.PARAM_NAMES_SHORT[var_i]
                 log_dict.update(
                     {
                         f"{full_log_name}_{var}_step_{step}": metric_tensor[
@@ -545,7 +548,7 @@ class ARModel(pl.LightningModule):
                     title=f"Test loss, t={t_i} ({self.step_length*t_i} h)",
                 )
                 for t_i, loss_map in zip(
-                    constants.VAL_STEP_LOG_ERRORS, mean_spatial_loss
+                    self.constants.VAL_STEP_LOG_ERRORS, mean_spatial_loss
                 )
             ]
 
@@ -561,7 +564,7 @@ class ARModel(pl.LightningModule):
             pdf_loss_maps_dir = os.path.join(wandb.run.dir, "spatial_loss_maps")
             os.makedirs(pdf_loss_maps_dir, exist_ok=True)
             for t_i, fig in zip(
-                constants.VAL_STEP_LOG_ERRORS, pdf_loss_map_figs
+                self.constants.VAL_STEP_LOG_ERRORS, pdf_loss_map_figs
             ):
                 fig.savefig(os.path.join(pdf_loss_maps_dir, f"loss_t{t_i}.pdf"))
             # save mean spatial loss as .pt file also

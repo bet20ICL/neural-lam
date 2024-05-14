@@ -7,8 +7,8 @@ import torch
 from torch import nn
 from tueplots import bundles, figsizes
 
-# First-party
-from neural_lam import constants
+# # First-party
+# from neural_lam import constants
 
 
 def load_dataset_stats(dataset_name, device="cpu"):
@@ -263,7 +263,7 @@ def fractional_plot_bundle(fraction):
     return bundle
 
 
-def init_wandb_metrics(wandb_logger):
+def init_wandb_metrics(wandb_logger, constants):
     """
     Set up wandb metrics to track
     """

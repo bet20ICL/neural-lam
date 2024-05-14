@@ -15,6 +15,7 @@ from neural_lam.models.hi_lam import HiLAM
 from neural_lam.models.hi_lam_parallel import HiLAMParallel
 from neural_lam.weather_dataset import WeatherDataset
 from neural_lam.era5_dataset import ERA5UKDataset
+from neural_lam.constants import MEPSConstants, ERA5UKConstants
 
 import os
 # Required for running jobs on GPU node
@@ -221,11 +222,11 @@ def main():
             args.dataset,
             split="train",
         )
-        
         val_set = ERA5UKDataset(
             args.dataset,
             split="val",
         )
+        args.constants = ERA5UKConstants
     elif args.dataset == "meps_example":
         train_set = WeatherDataset(
             args.dataset,
@@ -247,6 +248,7 @@ def main():
             subset=bool(args.subset_ds),
             control_only=args.control_only,
         )
+        args.constants = MEPSConstants
     else:
         raise ValueError(f"Unknown dataset: {args.dataset}")
 
@@ -326,7 +328,7 @@ def main():
 
     # Only init once, on rank 0 only
     if trainer.global_rank == 0:
-        utils.init_wandb_metrics(logger)  # Do after wandb.init
+        utils.init_wandb_metrics(logger, args.constants)  # Do after wandb.init
     print("===== Trainer initialized =====")
     
     if args.eval:
