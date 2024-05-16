@@ -93,7 +93,7 @@ class Graph:
         # flatten lat/lon gird
         # (lat, lon, 2) -> (2, lat, lon) -> (2, lat*lon) -> (lat*lon, 2)
         self.lat_lon_grid_flat = lat_lon_grid.permute(2, 0, 1).view(2, -1).permute(1, 0) # (lat*lon, 2)
-        self.local_lat_lon_grid_flat = local_lat_lon_grid.permute(2, 0, 1).view(2, -1).permute(1, 0) # (local_lat*local_lon, 2)
+        self.local_lat_lon_grid_flat = local_lat_lon_grid.permute(2, 0, 1).reshape(2, -1).permute(1, 0) # (local_lat*local_lon, 2)
         self.local2global_idxs = find_subset_indices(self.lat_lon_grid_flat, self.local_lat_lon_grid_flat) # (local_lat*local_lon,)
         self.local2global_idxs_set = set(self.local2global_idxs)
 

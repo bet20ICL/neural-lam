@@ -28,6 +28,6 @@ which python
 
 # GPU job does not have access to internet,
 # must turn WandB offline for script to run
-# wandb offline
+wandb online
 # srun python train_model.py --model graph_lam --graph multiscale --epochs 10
-# python train_model.py --model graph_lam --graph multiscale --epochs 5 --batch_size 2
+python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 4

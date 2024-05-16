@@ -454,18 +454,23 @@ class ARModel(pl.LightningModule):
         Return:
         log_dict: dict with everything to log for given metric
         """
-        log_dict = {}
-        metric_fig = vis.plot_error_map(
-            metric_tensor, step_length=self.step_length
-        )
         full_log_name = f"{prefix}_{metric_name}"
-        log_dict[full_log_name] = wandb.Image(metric_fig)
+        log_dict = {}
+        metric_fig = None
+        
+        pred_steps, d_features = metric_tensor.shape
+        if d_features < 40:
+            metric_fig = vis.plot_error_map(
+                metric_tensor, step_length=self.step_length
+            )
+            log_dict[full_log_name] = wandb.Image(metric_fig)
 
         if prefix == "test":
             # Save pdf
-            metric_fig.savefig(
-                os.path.join(wandb.run.dir, f"{full_log_name}.pdf")
-            )
+            if metric_fig:
+                metric_fig.savefig(
+                    os.path.join(wandb.run.dir, f"{full_log_name}.pdf")
+                )
             # Save errors also as csv
             np.savetxt(
                 os.path.join(wandb.run.dir, f"{full_log_name}.csv"),

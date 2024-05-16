@@ -13,9 +13,6 @@ source activate /vol/bitbucket/bet20/nlam
 source /vol/cuda/11.7.1/setup.sh
 # source /vol/cuda/12.0.0/setup.sh
 
-# wandb online
-# python train_model.py --graph multiscale --model graph_lam --batch_size 2
-# python check_wandb.py
-nvidia-smi
-python train_model.py --model graph_lam --dataset meps_example --graph multiscale --epochs 5 --batch_size 2
-# python test.py
+wandb online
+python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 2
+# python train_model.py --model graph_lam --dataset meps_example --graph multiscale --epochs 5 --batch_size 2

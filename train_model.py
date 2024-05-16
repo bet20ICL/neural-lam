@@ -179,7 +179,13 @@ def get_args():
         help="Standardize dataset "
         "(default: 1 (true))",
     )
-
+    parser.add_argument(
+        "--overfit",
+        type=int,
+        default=0,
+        help="Overfit to single batch for debugging "
+        "(default: 0 (false))",
+    )
     # Evaluation options
     parser.add_argument(
         "--eval",
@@ -211,20 +217,23 @@ def main():
     """
     Main function for training and evaluating models
     """
-    print("Main Function")
     args = get_args()
 
     # Set seed
     seed.seed_everything(args.seed)
     
-    if args.dataset == "era5":
+    if args.dataset == "era5_uk":
         train_set = ERA5UKDataset(
             args.dataset,
+            pred_length=args.ar_steps,
             split="train",
+            standardize=bool(args.standardize),
         )
         val_set = ERA5UKDataset(
             args.dataset,
+            pred_length=28,
             split="val",
+            standardize=bool(args.standardize),
         )
         args.constants = ERA5UKConstants
     elif args.dataset == "meps_example":
@@ -324,6 +333,7 @@ def main():
         callbacks=[checkpoint_callback],
         check_val_every_n_epoch=args.val_interval,
         precision=args.precision,
+        overfit_batches=args.overfit,
     )
 
     # Only init once, on rank 0 only

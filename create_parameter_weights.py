@@ -8,53 +8,83 @@ import torch
 from tqdm import tqdm
 
 # First-party
-from neural_lam import constants, era5_constants
+from neural_lam import constants
 from neural_lam.weather_dataset import WeatherDataset
+from neural_lam.era5_dataset import ERA5UKDataset
 
 def create_era5_parameter_weights(args, static_dir_path):
-    # TODO: calculate correct mean and std
-    mean = torch.tensor([0.])
-    std = torch.tensor([1.])
+    # Load dataset without any subsampling
+    ds = ERA5UKDataset(
+        args.dataset,
+        split="train",
+        standardize=False,
+    )  # Without standardization
+    loader = torch.utils.data.DataLoader(
+        ds, args.batch_size, shuffle=False, num_workers=args.n_workers
+    )
+    # Compute mean and std.-dev. of each parameter (+ flux forcing)
+    # across full dataset
+    print("Computing mean and std.-dev. for parameters...")
+    means = []
+    squares = []
+    for init_batch, target_batch, forcing_batch in tqdm(loader):
+        batch = torch.cat(
+            (init_batch, target_batch), dim=1
+        )  # (N_batch, N_t, N_grid, d_features)
+        means.append(torch.mean(batch, dim=(1, 2)))  # (N_batch, d_features,)
+        squares.append(
+            torch.mean(batch**2, dim=(1, 2))
+        )  # (N_batch, d_features,)
+
+    mean = torch.mean(torch.cat(means, dim=0), dim=0)  # (d_features)
+    second_moment = torch.mean(torch.cat(squares, dim=0), dim=0)
+    std = torch.sqrt(second_moment - mean**2)  # (d_features)
     
-    # TODO: include flux into dataset
+    # # TODO: add flux in the future
     # flux_mean = torch.tensor([0.])  # (,)
     # flux_std = torch.tensor([1.])  # (,)
     # flux_stats = torch.stack((flux_mean, flux_std))
-    
+
     print("Saving mean, std.-dev, flux_stats...")
     torch.save(mean, os.path.join(static_dir_path, "parameter_mean.pt"))
     torch.save(std, os.path.join(static_dir_path, "parameter_std.pt"))
     # torch.save(flux_stats, os.path.join(static_dir_path, "flux_stats.pt"))
-    
-    # TODO: calculate correct step difference
-    diff_mean = torch.tensor([0.])
-    diff_std = torch.tensor([1.])
+
+    # Compute mean and std.-dev. of one-step differences across the dataset
+    print("Computing mean and std.-dev. for one-step differences...")
+    ds_standard = ERA5UKDataset(
+        args.dataset,
+        split="train",
+        standardize=True,
+    )  # Re-load with standardization
+    loader_standard = torch.utils.data.DataLoader(
+        ds_standard, args.batch_size, shuffle=False, num_workers=args.n_workers
+    )
+
+    diff_means = []
+    diff_squares = []
+    for init_batch, target_batch, _ in tqdm(loader_standard):
+        batch = torch.cat(
+            (init_batch, target_batch), dim=1
+        )  # (N_batch, N_t', N_grid, d_features)
+
+        batch_diffs = batch[:, 1:] - batch[:, :-1]
+        # (N_batch', N_t-1, N_grid, d_features)
+
+        diff_means.append(
+            torch.mean(batch_diffs, dim=(1, 2))
+        )  # (N_batch', d_features,)
+        diff_squares.append(
+            torch.mean(batch_diffs**2, dim=(1, 2))
+        )  # (N_batch', d_features,)
+
+    diff_mean = torch.mean(torch.cat(diff_means, dim=0), dim=0)  # (d_features)
+    diff_second_moment = torch.mean(torch.cat(diff_squares, dim=0), dim=0)
+    diff_std = torch.sqrt(diff_second_moment - diff_mean**2)  # (d_features)
+
     print("Saving one-step difference mean and std.-dev...")
     torch.save(diff_mean, os.path.join(static_dir_path, "diff_mean.pt"))
     torch.save(diff_std, os.path.join(static_dir_path, "diff_std.pt"))
-    
-    # Create parameter weights based on height
-    # based on fig A.1 in graph cast paper
-    # w_dict = {
-    #     "0": 0.1,
-    #     "2": 1.0,
-    #     "65": 0.065,
-    #     "500": 0.03,
-    #     "850": 0.05,
-    #     "1000": 0.1,
-    # }
-    # w_list = np.array(
-    #     [w_dict[par.split("_")[-2]] for par in constants.PARAM_NAMES]
-    # )
-    # levels = [int(i) for i in ['50', '150', '250', '400', '500', '600', '850', '1000']]
-    
-    # TODO: make correct parameter weights for ERA5 dataset
-    parameter_weights = np.array([1.0])
-    print("Saving parameter weights...")
-    np.save(
-        os.path.join(static_dir_path, "parameter_weights.npy"),
-        parameter_weights.astype("float32"),
-    )
     
 
 def main():

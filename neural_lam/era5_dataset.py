@@ -1,3 +1,4 @@
+
 import os
 import glob
 import torch
@@ -21,7 +22,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         dataset_name, 
-        pred_length=6, 
+        pred_length=28, 
         split="train", 
         subsample_step=6,
         standardize=False,
@@ -29,45 +30,51 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         control_only=False
     ):
         super().__init__()
-
         assert split in ("train", "val", "test"), "Unknown dataset split"
-        self.sample_dir_path = os.path.join("data", dataset_name, "samples", "train")
+        self.sample_dir_path = os.path.join("data", dataset_name, "samples", split)
 
-        member_file_regexp = "*.npy"
-        sample_paths = glob.glob(os.path.join(self.sample_dir_path, member_file_regexp))
-        self.sample_names = [os.path.basename(path) for path in sample_paths]
-        self.sample_names.sort()
-
-        N = len(self.sample_names)
-        val_split = int(0.8 * N)
+        self.split = split
+        self.sample_length = pred_length + 2 # 2 init states
+        self.subsample_step = subsample_step
+        
         if split == "train":
-            self.sample_names = self.sample_names[:val_split]
+            sample_paths = glob.glob(os.path.join(self.sample_dir_path, "*.npy"))
+            self.sample_names = [os.path.basename(path) for path in sample_paths]
+            self.sample_names.sort()
+            self.length = len(self.sample_names) - self.sample_length + 1
+            # print(self.length)
+            # print(len(self.sample_names))
+            
         elif split == "val":
-            self.sample_names = self.sample_names[val_split:]
+            self.val_months = ["01", "04", "07", "10"]
+            self.val_samples = []
+            self.month_samples = {}
 
-        # self.sample_names = [path.split("/")[-1][4:-4] for path in sample_paths]
+            for month in self.val_months:
+                month_dir = os.path.join(self.sample_dir_path, month)
+                sample_paths = glob.glob(os.path.join(month_dir, "*.npy"))
+                sample_names = [os.path.join(month, os.path.basename(path)) for path in sample_paths]
+                sample_names.sort()
+                self.month_samples[month] = sample_names
+                n_samples = len(sample_names) - self.sample_length + 1
+                for i in range(n_samples):
+                    self.val_samples.append((month, i))
+                self.length = len(self.val_samples)
 
         if subset:
             self.sample_names = self.sample_names[:50] # Limit to 50 samples
 
-        self.sample_length = pred_length + 2 # 2 init states
-        self.subsample_step = subsample_step
-        # self.original_sample_length = 65//self.subsample_step # 21 for 3h steps
-        # assert self.sample_length <= self.original_sample_length, (
-        #         "Requesting too long time series samples")
-
         # Set up for standardization
         self.standardize = standardize
         if standardize:
-            pass
-            # ds_stats = utils.load_dataset_stats(dataset_name, "cpu")
-            # self.data_mean, self.data_std, self.flux_mean, self.flux_std =\
-            #     ds_stats["data_mean"], ds_stats["data_std"], ds_stats["flux_mean"], \
-            #     ds_stats["flux_std"]
+            ds_stats = utils.load_dataset_stats(dataset_name, "cpu")
+            self.data_mean, self.data_std = (
+                ds_stats["data_mean"],
+                ds_stats["data_std"],
+            )
 
     def __len__(self):
-        # two states needed to make prediction
-        return len(self.sample_names) - self.sample_length + 1
+        return self.length
 
     def _get_sample(self, sample_name):
         sample_path = os.path.join(self.sample_dir_path, f"{sample_name}")
@@ -80,10 +87,14 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         return full_sample
     
     def __getitem__(self, idx):
+        # validation dataset has different structure
+        if self.split == "val":
+            month, idx = self.val_samples[idx]
+            self.sample_names = self.month_samples[month]
+        
         # === Sample ===
         prev_prev_state = self._get_sample(self.sample_names[idx])
         prev_state = self._get_sample(self.sample_names[idx+1])        
-        target_state = self._get_sample(self.sample_names[idx+2])
 
         # N_grid = N_x * N_y; d_features = N_vars * N_levels
         init_states = torch.stack((prev_prev_state, prev_state), dim=0) # (2, N_grid, d_features)
@@ -95,9 +106,10 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         # TODO: add static and forcing features
         forcing = torch.zeros(target_states.shape[0], target_states.shape[1], 0) # (sample_len-2, N_grid, d_forcing)
         
-        # TODO: add normalization
         if self.standardize:
-            pass
+            # Standardize sample
+            init_states = (init_states - self.data_mean) / self.data_std
+            target_states = (target_states - self.data_mean) / self.data_std
         
         return init_states, target_states, forcing
 

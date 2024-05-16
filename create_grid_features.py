@@ -5,6 +5,26 @@ from argparse import ArgumentParser
 # Third-party
 import numpy as np
 import torch
+import xarray as xr
+
+# First party
+from era5_data_proc import uk_subset
+
+def era5_static_features(grid_xy):
+    """Get static features for the grid nodes (surface geopotential and land sea mask)
+
+    Args:
+        grid_xy (_type_): _description_
+
+    Returns:
+        array: _description_
+    """
+    static_dataset_path = "/vol/bitbucket/bet20/dataset/era5/global_full/static_variables.nc"
+    static_data = xr.open_dataset(static_dataset_path)
+    static_data = uk_subset(static_data)
+    static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_x, N_y)
+    static_data = static_data.transpose(2, 1, 0).reshape(grid_xy.shape[0], -1) # (N_x * N_y, N_var)
+    return static_data
 
 def create_era5_grid_features(args, static_dir_path):
     """
@@ -14,16 +34,25 @@ def create_era5_grid_features(args, static_dir_path):
     grid_xy = torch.tensor(
         np.load(os.path.join(static_dir_path, "nwp_xy.npy"))
     )  # (2, N_x, N_y)
-    grid_xy = grid_xy.flatten(1, 2).T  # (N_grid, 2)
-    pos_max = torch.max(torch.abs(grid_xy))
-    grid_xy = grid_xy / pos_max  # Divide by maximum coordinate
-
-    # Concatenate grid features
-    # grid_features = torch.cat(
-    #     (grid_xy), dim=1
-    # )  # (N_grid, 2)
-
-    grid_features = grid_xy
+    
+    grid_xy = grid_xy.reshape(2, -1).T # (N_x * N_y, 2)
+    grid_xy = np.radians(grid_xy)
+    grid_lons = grid_xy[:, 0]
+    grid_lats = grid_xy[:, 1]
+    grid_features = torch.stack(
+        (
+            np.cos(grid_lats), 
+            np.sin(grid_lons), 
+            np.cos(grid_lats)
+        ), 
+        dim=1
+    )
+    
+    static_data = era5_static_features(grid_xy)
+    grid_features = torch.cat(
+        (grid_features, torch.tensor(static_data)), dim=1
+    ) # (N_grid, N_var)
+    grid_features = grid_features.to(torch.float)
     torch.save(grid_features, os.path.join(static_dir_path, "grid_features.pt"))
 
 def main():
@@ -40,6 +69,10 @@ def main():
     args = parser.parse_args()
 
     static_dir_path = os.path.join("data", args.dataset, "static")
+    
+    if "era5" in args.dataset:
+        create_era5_grid_features(args, static_dir_path)
+        return
 
     # -- Static grid node features --
     grid_xy = torch.tensor(

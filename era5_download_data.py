@@ -41,7 +41,7 @@ c = cdsapi.Client()
 
 region = 'global_full'
 year = [2022, 2023]
-month = [i for i in range(2, 13)]
+month = [i for i in range(1, 13)]
 
 year_str = [str(i) for i in year]
 month_str = [str(i).zfill(2) for i in month]
@@ -52,8 +52,12 @@ dir_path = f'{RAW_ERA5_PATH}/{region}'
 path = Path(dir_path)
 path.mkdir(parents=True, exist_ok=True)
 
-def download_year(y_str):
-    # Download month by month
+def download_atmospheric_vars(y_str):
+    """Download atmospheric variables for the specified year, months and times
+
+    Args:
+        y_str (_type_): _description_
+    """
     for m in month_str:
         file_path = f'{dir_path}/{y_str}_{m}.nc'
         try:
@@ -81,5 +85,31 @@ def download_year(y_str):
             print("=========== Error occured: ===========")
             print(e)
 
+def download_surface_vars():
+    """Download surface variables
+    """
+    file_path = f'{dir_path}/static_variables.nc'
+    c.retrieve(
+        'reanalysis-era5-single-levels',
+        {
+            'product_type': 'reanalysis',
+            'format': 'netcdf',
+            'variable': [
+                'geopotential', 'land_sea_mask',
+            ],
+            'year': ['2022', '2023'],
+            'month': [
+                '03', '10',
+            ],
+            'day': [
+                '11', '28',
+            ],
+            'time': ['09:00', '21:00'],
+        },
+        file_path
+    )
+
 for y in year_str:
-    download_year(y)
+    download_atmospheric_vars(y)
+
+# download_surface_vars()
