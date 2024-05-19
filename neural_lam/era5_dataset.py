@@ -46,7 +46,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
             self.length = len(self.sample_names) - self.sample_length + 1
             
         elif split == "val":
-            self.val_months = ["01", "04", "07", "10"]
+            self.val_months = constants.ERA5UKConstants.VAL_MONTHS
             self.val_samples = []
             self.month_samples = {}
             self.month_sample_times = {}

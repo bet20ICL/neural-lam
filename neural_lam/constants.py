@@ -23,6 +23,8 @@ class ERA5UKConstants:
     PARAM_NAMES = ['z50', 'z150', 'z250', 'z400', 'z500', 'z700', 'z850', 'z1000', 'q50', 'q150', 'q250', 'q400', 'q500', 'q700', 'q850', 'q1000', 't50', 't150', 't250', 't400', 't500', 't700', 't850', 't1000', 'u50', 'u150', 'u250', 'u400', 'u500', 'u700', 'u850', 'u1000', 'v50', 'v150', 'v250', 'v400', 'v500', 'v700', 'v850', 'v1000', 'w50', 'w150', 'w250', 'w400', 'w500', 'w700', 'w850', 'w1000']
     PARAM_NAMES_SHORT = PARAM_NAMES
     PARAM_UNITS = ['m**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1']
+    VAL_MONTHS = ["01", "04", "07", "10"]
+        
 class MEPSConstants:
     GRID_SHAPE = (268, 238)  # (y, x)
     GRID_FORCING_DIM = 5 * 3 + 1  # 5 feat. for 3 time-step window + 1 batch-static

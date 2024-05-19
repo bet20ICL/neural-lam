@@ -7,8 +7,11 @@ import glob
 import numpy as np
 import torch
 
+from neural_lam.constants import ERA5UKConstants
+
 # Directory where the raw ERA5 data is stored
-RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
+# RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
+RAW_ERA5_PATH = '/work/ec249/ec249/bet20/dataset/era5/global_full'
 
 uk_bbox = {
     "lat_max": 63,
@@ -32,7 +35,29 @@ def uk_subset(data):
     uk_subset = xr.concat([subset1, subset2], dim='longitude')
     return uk_subset
 
-def save_dataset_samples(dataset, split="train", subset=None):
+def proc_file(filepath, proccessed_dataset_path, subset=None):
+    """
+    Process a single .nc file into .npy files
+    """
+    data = xr.open_dataset(filepath)
+    if subset:
+        data = subset(data)
+    
+    for i, time in enumerate(data['time'].values):
+        time = data['time'].values[i]
+        sample = data.sel(time=time)
+        array = sample.to_array().values # (N_vars, N_levels, N_lat, N_lon)
+        array = array.transpose(3,2,0,1) # (N_lon, N_lat, N_vars, N_levels)
+        N_lon, N_lat = array.shape[0], array.shape[1]
+        array = array.reshape(N_lon*N_lat, -1) # (N_lon*N_lat, N_vars*N_levels)
+                
+        time_py = time.astype('M8[ms]').tolist() # numpy.datetime64 -> datetime.datetime
+        date_str = time_py.strftime('%Y%m%d%H%M%S') # datetime.datetime -> str
+        
+        np.save(f'{proccessed_dataset_path}/{date_str}.npy', array)
+        print("Proccessed file: ", date_str)
+
+def save_dataset_samples(dataset, subset=None):
     """
     Convert ERA5 netcdf (.nc) files to numpy array files.
     Optionally take a subset of the ERA5 data.
@@ -43,28 +68,19 @@ def save_dataset_samples(dataset, split="train", subset=None):
     Creates for ERA5 dataset:
         - samples/{split}/{date}.npy
     """
-    nc_files = glob.glob(f'{RAW_ERA5_PATH}/*.nc')
-    proccessed_dataset_path = f"data/{dataset}/samples/{split}"
+    # Training Files
+    nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022_10.nc')
+    proccessed_dataset_path = f"data/{dataset}/samples/train"
     os.makedirs(proccessed_dataset_path, exist_ok=True)
-
     for j, filepath in enumerate(nc_files):
-        data = xr.open_dataset(filepath)
-        if subset:
-            data = subset(data)
+        proc_file(filepath, proccessed_dataset_path, subset=subset)
         
-        for i, time in enumerate(data['time'].values):
-            time = data['time'].values[i]
-            sample = data.sel(time=time)
-            array = sample.to_array().values # (N_vars, N_levels, N_lat, N_lon)
-            array = array.transpose(3,2,0,1) # (N_lon, N_lat, N_vars, N_levels)
-            N_lon, N_lat = array.shape[0], array.shape[1]
-            array = array.reshape(N_lon*N_lat, -1) # (N_lon*N_lat, N_vars*N_levels)
-                   
-            time_py = time.astype('M8[ms]').tolist() # numpy.datetime64 -> datetime.datetime
-            date_str = time_py.strftime('%Y%m%d%H%M%S') # datetime.datetime -> str
-            
-            np.save(f'{proccessed_dataset_path}/{date_str}.npy', array)
-            print("Proccessed file: ", date_str)
+    # Validation Files
+    for month in ERA5UKConstants.VAL_MONTHS:
+        filepath = f'{RAW_ERA5_PATH}/2023_{month}.nc'
+        proccessed_dataset_path = f"data/{dataset}/samples/val/{month}"
+        os.makedirs(proccessed_dataset_path, exist_ok=True)
+        proc_file(filepath, proccessed_dataset_path, subset=subset)    
 
 def create_xy(dataset, subset=None):
     """

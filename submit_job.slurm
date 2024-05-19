@@ -4,10 +4,7 @@
 #SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --time=02:00:00
-
-# Replace [budget code] below with your project code (e.g. t01)
 #SBATCH --account=ec249
-#SBATCH --output=./slurm_log/slurm-%j.out
 
 # texlive
 export PATH=/work/ec249/ec249/bet20/texlive//bin/x86_64-linux:$PATH
@@ -28,6 +25,6 @@ which python
 
 # GPU job does not have access to internet,
 # must turn WandB offline for script to run
-wandb online
+# wandb online
 # srun python train_model.py --model graph_lam --graph multiscale --epochs 10
-python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 4
+srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --epochs 5 --batch_size 4
