@@ -8,20 +8,22 @@ from neural_lam import constants, utils
 
 
 @matplotlib.rc_context(utils.fractional_plot_bundle(1))
-def plot_error_map(errors, title=None, step_length=3):
+def plot_error_map(errors, dataset_constants, title=None, step_length=3, summary=False):
     """
     Plot a heatmap of errors of different variables at different
     predictions horizons
     errors: (pred_steps, d_f)
     """
     errors_np = errors.T.cpu().numpy()  # (d_f, pred_steps)
+    var_subset = dataset_constants.HEAT_MAP_VARS if summary else range(errors_np.shape[0])
+    errors_np = errors_np[var_subset, :]
     d_f, pred_steps = errors_np.shape
 
     # Normalize all errors to [0,1] for color map
     max_errors = errors_np.max(axis=1)  # d_f
     errors_norm = errors_np / np.expand_dims(max_errors, axis=1)
 
-    fig, ax = plt.subplots(figsize=(15, 10))
+    fig, ax = plt.subplots(figsize=(30, 20))
 
     ax.imshow(
         errors_norm,
@@ -36,7 +38,7 @@ def plot_error_map(errors, title=None, step_length=3):
     # ax and labels
     for (j, i), error in np.ndenumerate(errors_np):
         # Numbers > 9999 will be too large to fit
-        formatted_error = f"{error:.3f}" if error < 9999 else f"{error:.2E}"
+        formatted_error = f"{error:.2E}"
         ax.text(i, j, formatted_error, ha="center", va="center", usetex=False)
 
     # Ticks and labels
@@ -49,10 +51,8 @@ def plot_error_map(errors, title=None, step_length=3):
 
     ax.set_yticks(np.arange(d_f))
     y_ticklabels = [
-        f"{name} ({unit})"
-        for name, unit in zip(
-            constants.PARAM_NAMES_SHORT, constants.PARAM_UNITS
-        )
+        f"{dataset_constants.PARAM_NAMES_SHORT[var_idx]} ({dataset_constants.PARAM_UNITS[var_idx]})"
+        for var_idx in var_subset
     ]
     ax.set_yticklabels(y_ticklabels, rotation=30, size=label_size)
 

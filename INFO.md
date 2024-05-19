@@ -20,7 +20,7 @@ python create_grid_features.py --dataset era5_uk
 
 python create_parameter_weights.py --dataset era5_uk --batch_size 2
 
-python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --epochs 5 --batch_size 2
+python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --epochs 5 --batch_size 4
 
 
 # Wednesday
@@ -55,8 +55,54 @@ graph
 - val subset 
 - start training
 
-# Sprint 2: Fill in TODOs about the dataset
-- forcing features
+# Friday
 
-# Sprint 3: GCN baseline model 
-- 
+# Sprint 0
+- read Keisler (x)
+
+# Saturday
+
+- read Stormer ()
+- read climax ()
+
+- read weatherbench2 ()
+- read inductive biases ()
+- read graph u-nets ()
+- read graph pooling ()
+- read multiscale gnns ()
+
+# Sprint 1
+- heatmap (x)
+- sanity check against weatherbench 2 ()
+
+# Sprint 2: Fill in TODOs about the dataset
+- forcing features (x)
+- parameter weights
+    - pressure weights
+        - figure this out (x)
+        - implement (x)
+    - latitude weights
+        - read Stormer (x) 
+        - read GraphCast (x)
+        - check modulus ()
+        - implement ()
+
+# Sunday
+
+# Sprint 1
+- finish previous work 
+- setup data processing script on cirrus
+    - auto save .nc files in to .np files + train split ()
+
+- investigate slow validation loader ()
+
+# Sprint 3: baseline models
+- gcn ()
+- gat ()
+
+# Sprint 4
+- read aman's code ()
+- space attention ()
+
+# Sprint 5
+- train larger model ()

@@ -456,14 +456,16 @@ class ARModel(pl.LightningModule):
         """
         full_log_name = f"{prefix}_{metric_name}"
         log_dict = {}
-        metric_fig = None
+
+        metric_fig = vis.plot_error_map(
+            metric_tensor, self.constants, step_length=self.step_length
+        )
+        log_dict[full_log_name] = wandb.Image(metric_fig)
         
-        pred_steps, d_features = metric_tensor.shape
-        if d_features < 40:
-            metric_fig = vis.plot_error_map(
-                metric_tensor, step_length=self.step_length
-            )
-            log_dict[full_log_name] = wandb.Image(metric_fig)
+        summary_metric_fig = vis.plot_error_map(
+            metric_tensor, self.constants, step_length=self.step_length, summary=True
+        )
+        log_dict[f"{full_log_name}_summary"] = wandb.Image(summary_metric_fig)
 
         if prefix == "test":
             # Save pdf

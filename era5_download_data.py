@@ -40,7 +40,7 @@ RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5"
 c = cdsapi.Client()
 
 region = 'global_full'
-year = [2022, 2023]
+year = [2020]
 month = [i for i in range(1, 13)]
 
 year_str = [str(i) for i in year]

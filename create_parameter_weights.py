@@ -13,6 +13,28 @@ from neural_lam.weather_dataset import WeatherDataset
 from neural_lam.era5_dataset import ERA5UKDataset
 
 def create_era5_parameter_weights(args, static_dir_path):
+    # === Per Grid Level Weights ===
+    levels = np.array(constants.ERA5UKConstants.LEVELS).astype(int)
+    weighting = levels / sum(levels) # (N_levels,)
+    weighting = np.tile(weighting, 6) # (N_levels * N_vars)
+    
+    # load grid coordinates
+    grid_xy = np.load(os.path.join(static_dir_path, "nwp_xy.npy")) # (2, N_x, N_y)
+    _, _, n_lat = grid_xy.shape
+    grid_xy = grid_xy.reshape(2, -1).T # (N_x * N_y, 2)
+    lats = grid_xy[:, 1] # (N_x * N_y,)
+    cos_lats = np.cos(np.deg2rad(lats))
+    lat_weights = n_lat * cos_lats / cos_lats.sum() # scale to unit mean over grid 
+    param_weights = np.expand_dims(lat_weights, axis=1) * weighting
+    
+    # static_dir_path = os.path.join(static_dir_path, "tmp")
+    print("Saving parameter weights...")
+    np.save(
+        os.path.join(static_dir_path, "parameter_weights.npy"),
+        param_weights.astype("float32"),
+    )
+    
+    # === Per Var Level Statistics ===
     # Load dataset without any subsampling
     ds = ERA5UKDataset(
         args.dataset,
@@ -40,7 +62,7 @@ def create_era5_parameter_weights(args, static_dir_path):
     second_moment = torch.mean(torch.cat(squares, dim=0), dim=0)
     std = torch.sqrt(second_moment - mean**2)  # (d_features)
     
-    # # TODO: add flux in the future
+    # TODO: add flux in the future
     # flux_mean = torch.tensor([0.])  # (,)
     # flux_std = torch.tensor([1.])  # (,)
     # flux_stats = torch.stack((flux_mean, flux_std))

@@ -4,14 +4,13 @@ import numpy as np
 
 class ERA5UKConstants:
     GRID_SHAPE = (65, 57)  # (y, x)
-    # TODO: update this when forcing variables are added
-    GRID_FORCING_DIM = 0 #
+    GRID_FORCING_DIM = 12 # 4 variables * 3 time steps
     GRID_STATE_DIM = 8 * 6 # 8 levels * 6 variables
+    HEAT_MAP_VARS = [4, 22, 13, 30, 38, 46]
     VAL_STEP_LOG_ERRORS = np.array([1, 2, 4, 8, 16]) 
     METRICS_WATCH = [
         "val_rmse",
     ]
-    # TODO: fill this in
     VAR_LEADS_METRICS_WATCH = {
         4: [1, 2, 4, 8, 16],
         22: [1, 2, 4, 8, 16],
@@ -20,14 +19,15 @@ class ERA5UKConstants:
         38: [1, 2, 4, 8, 16],
         46: [1, 2, 4, 8, 16],
     }
+    LEVELS = ['50', '150', '250', '400', '500', '600', '850', '1000']
     PARAM_NAMES = ['z50', 'z150', 'z250', 'z400', 'z500', 'z700', 'z850', 'z1000', 'q50', 'q150', 'q250', 'q400', 'q500', 'q700', 'q850', 'q1000', 't50', 't150', 't250', 't400', 't500', 't700', 't850', 't1000', 'u50', 'u150', 'u250', 'u400', 'u500', 'u700', 'u850', 'u1000', 'v50', 'v150', 'v250', 'v400', 'v500', 'v700', 'v850', 'v1000', 'w50', 'w150', 'w250', 'w400', 'w500', 'w700', 'w850', 'w1000']
     PARAM_NAMES_SHORT = PARAM_NAMES
     PARAM_UNITS = ['m**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1']
-    
 class MEPSConstants:
     GRID_SHAPE = (268, 238)  # (y, x)
     GRID_FORCING_DIM = 5 * 3 + 1  # 5 feat. for 3 time-step window + 1 batch-static
     GRID_STATE_DIM = 17
+    HEAT_MAP_VARS = list(range(0, 48))
     VAL_STEP_LOG_ERRORS = np.array([1, 2, 3, 5, 10, 15, 19])
     METRICS_WATCH = []
     VAR_LEADS_METRICS_WATCH = {
