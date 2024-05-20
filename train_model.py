@@ -13,6 +13,9 @@ from neural_lam import constants, utils
 from neural_lam.models.graph_lam import GraphLAM
 from neural_lam.models.hi_lam import HiLAM
 from neural_lam.models.hi_lam_parallel import HiLAMParallel
+from neural_lam.models.gcn_lam import GCNLAM
+from neural_lam.models.gat_lam import GATLAM
+
 from neural_lam.weather_dataset import WeatherDataset
 from neural_lam.era5_dataset import ERA5UKDataset
 from neural_lam.constants import MEPSConstants, ERA5UKConstants
@@ -25,6 +28,8 @@ print(f"WANDB_MODE: {wandb_mode}")
 
 MODELS = {
     "graph_lam": GraphLAM,
+    "gcn_lam": GCNLAM,
+    "gat_lam": GATLAM,
     "hi_lam": HiLAM,
     "hi_lam_parallel": HiLAMParallel,
 }

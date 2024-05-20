@@ -61,7 +61,6 @@ graph
 - read Keisler (x)
 
 # Saturday
-
 - read Stormer ()
 - read climax ()
 
@@ -90,19 +89,53 @@ graph
 # Sunday
 
 # Sprint 1
-- finish previous work 
+- finish previous work (x)
 - setup data processing script on cirrus
-    - auto save .nc files in to .np files + train split ()
+    - auto save .nc files in to .np files + train split (x)
 
-- investigate slow validation loader ()
+- investigate slow validation loader (x)
+    - AR steps take a long time
 
-# Sprint 3: baseline models
+- investigate g2m and m2g indices (x)
+    - its fucked up for no reason
+
+- understand existing gnn completely ()
+    - interaction net (x)
+    - graph-lam (x)
+
+# Sprint 2: baseline models
 - gcn ()
 - gat ()
 
-# Sprint 4
+# Monday
+
+# Communication
+    - SEND
+        - present gcn vs graphcast results
+        - find out how to calculate flops
+
+    - RECV
+        - cirrus issues
+        - sync tuesday/wednesday about space attention implementation
+
+# Sprint 0
+- analyse gcn vs graphcast ()
+- point cloud ()
+
+# Sprint 1
+- understand graph transformers ()
+
+# Sprint 2
+- understand diff pool ()
+
+# Sprint 3
 - read aman's code ()
+
+# Sprint 4
+- Stormer paper ()
+- ClimaX paper ()
+- ClimaX code ()
 - space attention ()
 
-# Sprint 5
+# Sprint 4
 - train larger model ()
