@@ -10,8 +10,7 @@ import torch
 from neural_lam.constants import ERA5UKConstants
 
 # Directory where the raw ERA5 data is stored
-# RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
-RAW_ERA5_PATH = '/work/ec249/ec249/bet20/dataset/era5/global_full'
+RAW_ERA5_PATH = ERA5UKConstants.RAW_ERA5_PATH
 
 uk_bbox = {
     "lat_max": 63,
@@ -116,5 +115,5 @@ def create_xy(dataset, subset=None):
     np.save(os.path.join(proccessed_dataset_path, "border_mask.npy"), border_mask)
 
 if __name__ == "__main__":
-    save_dataset_samples("era5_uk", subset=uk_subset)
-    # create_xy("era5_uk_full", subset=uk_subset)
+    # save_dataset_samples("era5_uk", subset=uk_subset)
+    create_xy("era5_uk", subset=uk_subset)

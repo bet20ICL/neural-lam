@@ -27,4 +27,4 @@ which python
 # must turn WandB offline for script to run
 # wandb online
 # srun python train_model.py --model graph_lam --graph multiscale --epochs 10
-srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --epochs 5 --batch_size 4
+srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --epochs 150 --batch_size 4

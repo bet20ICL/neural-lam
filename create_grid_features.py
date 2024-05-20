@@ -9,6 +9,7 @@ import xarray as xr
 
 # First party
 from era5_data_proc import uk_subset
+from neural_lam.constants import ERA5UKConstants
 
 def era5_static_features(grid_xy):
     """Get static features for the grid nodes (surface geopotential and land sea mask)
@@ -19,7 +20,7 @@ def era5_static_features(grid_xy):
     Returns:
         array: _description_
     """
-    static_dataset_path = "/vol/bitbucket/bet20/dataset/era5/global_full/static_variables.nc"
+    static_dataset_path = os.path.join(ERA5UKConstants.RAW_ERA5_PATH, "static_variables.nc")
     static_data = xr.open_dataset(static_dataset_path)
     static_data = uk_subset(static_data)
     static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_x, N_y)

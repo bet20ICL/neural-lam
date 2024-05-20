@@ -34,13 +34,13 @@ import numcodecs
 import sys
 from pathlib import Path
 
+from neural_lam.constants import ERA5UKConstants
+
 # Directory where the raw ERA5 data is stored
-# RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5"
-RAW_ERA5_PATH = '/work/ec249/ec249/bet20/dataset/era5'
+RAW_ERA5_PATH = ERA5UKConstants.RAW_ERA5_PATH
 
 c = cdsapi.Client()
 
-region = 'global_full'
 year = [2022]
 # month = [i for i in range(1, 13)]
 month = [10]
@@ -50,7 +50,7 @@ month_str = [str(i).zfill(2) for i in month]
 day_str = [str(i).zfill(2) for i in range(1, 32)]
 time_str = ['00:00', '06:00', '12:00', '18:00']
 
-dir_path = f'{RAW_ERA5_PATH}/{region}'
+dir_path = RAW_ERA5_PATH
 path = Path(dir_path)
 path.mkdir(parents=True, exist_ok=True)
 

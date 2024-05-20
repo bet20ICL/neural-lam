@@ -63,14 +63,14 @@ def create_era5_parameter_weights(args, static_dir_path):
     std = torch.sqrt(second_moment - mean**2)  # (d_features)
     
     # TODO: add flux in the future
-    # flux_mean = torch.tensor([0.])  # (,)
-    # flux_std = torch.tensor([1.])  # (,)
-    # flux_stats = torch.stack((flux_mean, flux_std))
+    flux_mean = torch.tensor([0.])  # (,)
+    flux_std = torch.tensor([1.])  # (,)
+    flux_stats = torch.stack((flux_mean, flux_std))
 
     print("Saving mean, std.-dev, flux_stats...")
     torch.save(mean, os.path.join(static_dir_path, "parameter_mean.pt"))
     torch.save(std, os.path.join(static_dir_path, "parameter_std.pt"))
-    # torch.save(flux_stats, os.path.join(static_dir_path, "flux_stats.pt"))
+    torch.save(flux_stats, os.path.join(static_dir_path, "flux_stats.pt"))
 
     # Compute mean and std.-dev. of one-step differences across the dataset
     print("Computing mean and std.-dev. for one-step differences...")

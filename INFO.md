@@ -139,3 +139,9 @@ graph
 
 # Sprint 4
 - train larger model ()
+
+# Sprint 5
+- set up training on cirrus
+
+- grid features ()
+- grid_features, forcing features ()
