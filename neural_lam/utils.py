@@ -36,7 +36,7 @@ def load_dataset_stats(dataset_name, device="cpu"):
     }
 
 
-def load_static_data(dataset_name, device="cpu"):
+def load_static_data(dataset_name, device="cpu", args=None):
     """
     Load static files related to dataset
     """
@@ -73,6 +73,21 @@ def load_static_data(dataset_name, device="cpu"):
         dtype=torch.float32,
         device=device,
     )  # (d_f,)
+    
+    if args:
+        if args.simple_grid:
+            grid_static_features = loads_file(
+                "grid_features_simple.pt"
+            )  # (N_grid, d_grid_static)
+            print("Using simple grid features")
+        else:
+            print("Using original grid features")
+            
+        if args.simple_param_weights:
+            param_weights = torch.ones_like(param_weights, dtype=torch.float32, device=device)
+            print("Using simple parameter weights")
+        else:
+            print("Using original parameter weights")
 
     return {
         "border_mask": border_mask,

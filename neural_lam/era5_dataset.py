@@ -27,12 +27,14 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         subsample_step=6,
         standardize=False,
         subset=False,
-        control_only=False
+        control_only=False,
+        args=None,
     ):
         super().__init__()
         assert split in ("train", "val", "test"), "Unknown dataset split"
         self.sample_dir_path = os.path.join("data", dataset_name, "samples", split)
 
+        self.args = args
         self.split = split
         self.sample_length = pred_length + 2 # 2 init states
         self.subsample_step = subsample_step
@@ -149,5 +151,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
             dim=2,
         ) # (sample_len-2, N_grid, 12)
         
-        forcing = torch.zeros(target_states.shape[0], target_states.shape[1], 0) # (sample_len-2, N_grid, d_forcing)
+        if self.args and self.args.no_forcing:
+            forcing = torch.zeros(target_states.shape[0], target_states.shape[1], 0) # (sample_len-2, N_grid, d_forcing)
+        
         return init_states, target_states, forcing

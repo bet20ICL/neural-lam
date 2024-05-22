@@ -205,6 +205,25 @@ def get_args():
         help="Number of example predictions to plot during evaluation "
         "(default: 1)",
     )
+    # Ablation 
+    parser.add_argument(
+        "--simple_grid",
+        type=int,
+        default=0,
+        help="Use simple grid features (default: 0 (false))",
+    )
+    parser.add_argument(
+        "--simple_param_weights",
+        type=int,
+        default=0,
+        help="Use simple parameter weights (default: 0 (false))", 
+    )
+    parser.add_argument(
+        "--no_forcing",
+        type=int,
+        default=0,
+        help="Do not add forcing features to dataset (default: 0 (false))",
+    )
     args = parser.parse_args()
 
     # Asserts for arguments
@@ -233,12 +252,14 @@ def main():
             pred_length=args.ar_steps,
             split="train",
             standardize=bool(args.standardize),
+            args=args,
         )
         val_set = ERA5UKDataset(
             args.dataset,
             pred_length=28,
             split="val",
             standardize=bool(args.standardize),
+            args=args,
         )
         args.constants = ERA5UKConstants
     elif args.dataset == "meps_example":
