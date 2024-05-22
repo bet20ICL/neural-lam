@@ -114,8 +114,6 @@ class ERA5UKDataset(torch.utils.data.Dataset):
             target_states = (target_states - self.data_mean) / self.data_std
         
         # === Forcing features ===
-        # forcing = torch.zeros(target_states.shape[0], target_states.shape[1], 0) # (sample_len-2, N_grid, d_forcing)
-        
         hour_inc = torch.arange(self.sample_length) * 6 # (sample_len,)
 
         init_hour = self.sample_times[idx].hour
@@ -151,4 +149,5 @@ class ERA5UKDataset(torch.utils.data.Dataset):
             dim=2,
         ) # (sample_len-2, N_grid, 12)
         
+        forcing = torch.zeros(target_states.shape[0], target_states.shape[1], 0) # (sample_len-2, N_grid, d_forcing)
         return init_states, target_states, forcing

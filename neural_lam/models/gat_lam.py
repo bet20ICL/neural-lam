@@ -1,5 +1,6 @@
 # Third-party
 import torch_geometric as pyg
+import torch
 from torch_geometric.nn import GAT
 from torch import nn
 
@@ -42,6 +43,7 @@ class GATLAM(BaseGraphModel):
         self.processor = GAT(
             in_channels=args.hidden_dim,
             hidden_channels=args.hidden_dim,
+            edge_dim=args.hidden_dim,
             num_layers=args.processor_layers,
             out_channels=args.hidden_dim,
             v2=True,
@@ -70,15 +72,29 @@ class GATLAM(BaseGraphModel):
         mesh_rep: has shape (B, N_mesh, d_h)
         Returns mesh_rep: (B, N_mesh, d_h)
         """
-        # TODO: figure out how to incorporate edge features
         # Embed m2m here first
         batch_size = mesh_rep.shape[0]
         m2m_emb = self.m2m_embedder(self.m2m_features)  # (M_mesh, d_h)
         m2m_emb_expanded = self.expand_to_batch(
             m2m_emb, batch_size
         )  # (B, M_mesh, d_h)
+        
+        # Flatten graph in mini-batch into a single graph
+        # Required for GAT training
+        mesh_rep_batch = torch.reshape(mesh_rep, (-1, mesh_rep.shape[-1])) # (B*N_mesh, d_h)
+        N_mesh = mesh_rep.shape[1]
+        edge_index_batch = torch.cat([
+            self.m2m_edge_index + N_mesh * i
+            for i in range(batch_size)
+        ], dim=1) # (2, B*M_mesh)
+        m2m_emb_expanded = m2m_emb_expanded.reshape((-1, m2m_emb.shape[-1])) # (B*M_mesh, d_h)
 
-        mesh_rep = self.processor(
-            mesh_rep, self.m2m_edge_index, edge_attr=m2m_emb_expanded
-        )  # (B, N_mesh, d_h)
+        # GAT uses 'scatter' which does not have a deterministic implementation
+        torch.use_deterministic_algorithms(False)
+        mesh_rep_batch = self.processor(
+            mesh_rep_batch, edge_index_batch, edge_attr=m2m_emb_expanded
+        )  # (B*N_mesh, d_h)
+        torch.use_deterministic_algorithms(True)
+        
+        mesh_rep = mesh_rep_batch.reshape((batch_size, N_mesh, mesh_rep_batch.shape[-1]))
         return mesh_rep

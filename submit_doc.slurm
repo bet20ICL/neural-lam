@@ -16,6 +16,9 @@ source /vol/cuda/11.7.1/setup.sh
 which python
 
 wandb online
+# python train_model.py --model gat_lam --dataset era5_uk --graph uk_graphcast --batch_size 4 --epochs 5
+
 # python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 2
-python train_model.py --model gcn_lam --dataset era5_uk --graph uk_graphcast --batch_size 4
+# python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 4 --epochs 150
 # python train_model.py --model graph_lam --dataset meps_example --graph multiscale --epochs 5 --batch_size 2
+python train_model.py --model gat_lam --dataset era5_uk --graph uk_graphcast --batch_size 4 --epochs 100

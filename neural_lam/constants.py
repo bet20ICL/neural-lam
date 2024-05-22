@@ -4,7 +4,7 @@ import numpy as np
 
 class ERA5UKConstants:
     GRID_SHAPE = (65, 57)  # (y, x)
-    GRID_FORCING_DIM = 12 # 4 variables * 3 time steps
+    GRID_FORCING_DIM = 0 # 4 variables * 3 time steps
     GRID_STATE_DIM = 8 * 6 # 8 levels * 6 variables
     HEAT_MAP_VARS = [4, 22, 13, 30, 38, 46]
     VAL_STEP_LOG_ERRORS = np.array([1, 2, 4, 8, 16]) 
@@ -24,7 +24,8 @@ class ERA5UKConstants:
     PARAM_NAMES_SHORT = PARAM_NAMES
     PARAM_UNITS = ['m**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1']
     VAL_MONTHS = ["01", "04", "07", "10"]
-    RAW_ERA5_PATH = "/work/ec249/ec249/bet20/dataset/era5/global_full"
+    # RAW_ERA5_PATH = "/work/ec249/ec249/bet20/dataset/era5/global_full"
+    RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
         
 class MEPSConstants:
     GRID_SHAPE = (268, 238)  # (y, x)

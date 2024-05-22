@@ -21,3 +21,5 @@ pre-commit>=2.15.0
 cdsapi
 xarray
 numcodecs
+torchprofile
+fvcore

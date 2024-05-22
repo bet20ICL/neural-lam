@@ -197,6 +197,13 @@ class ARModel(pl.LightningModule):
         # pred_std: (B, pred_steps, num_grid_nodes, d_f) or (d_f,)
 
         return prediction, target_states, pred_std
+    
+    def forward(self, batch):
+        """
+        Forward pass for profiling with fvcore
+        Not used otherwise
+        """
+        return self.common_step(batch)[0]
 
     def training_step(self, batch):
         """

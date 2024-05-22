@@ -1,3 +1,16 @@
+# Method Verification
+
+## Alignment of Data Features
+- `verify_method.ipynb`
+- 48 features are aligned in the order listed in `constants.ipynb`
+
+## Grid Feature Creation
+- `verify_method.ipynb`
+- grid features are being created as stated in graphcast
+
+## Data normalisation
+- ``
+
 # FYP Notes
 
 ## ERA5 Dataset
@@ -72,7 +85,6 @@ graph
 
 # Sprint 1
 - heatmap (x)
-- sanity check against weatherbench 2 ()
 
 # Sprint 2: Fill in TODOs about the dataset
 - forcing features (x)
@@ -104,23 +116,30 @@ graph
     - graph-lam (x)
 
 # Sprint 2: baseline models
-- gcn ()
-- gat ()
+- gcn (x)
 
 # Monday
 
 # Communication
     - SEND
-        - present gcn vs graphcast results
-        - find out how to calculate flops
+        - present gcn vs graphcast results ()
+        - find out how to calculate flops 
 
     - RECV
         - cirrus issues
         - sync tuesday/wednesday about space attention implementation
 
 # Sprint 0
-- analyse gcn vs graphcast ()
+- analyse gcn vs graphcast (x)
 - point cloud ()
+- grid features ()
+    - doc, 114955
+- grid_features, forcing features ()
+    - doc, 114956
+- set up sulis ()
+- gat ()
+- read weatherbench2 () 
+- sanity check against weatherbench 2 ()
 
 # Sprint 1
 - understand graph transformers ()
@@ -141,7 +160,28 @@ graph
 - train larger model ()
 
 # Sprint 5
-- set up training on cirrus
+- set up training on cirrus (x)
 
-- grid features ()
-- grid_features, forcing features ()
+- grid features, forcing (115039)
+
+- grid features, no forcing (115042)
+
+
+# Meeting
+- Profiling
+    - trainable parameters:
+        - returned by PyTorch Lightning
+    - inference flops:
+        - using fvcore
+        - graph_lam
+            - unsupported operations:
+                Unsupported operator aten::silu encountered 19 time(s)
+                Unsupported operator aten::index_select encountered 12 time(s)
+                Unsupported operator aten::expand_as encountered 6 time(s)
+                Unsupported operator aten::scatter_add_ encountered 6 time(s)
+                Unsupported operator aten::add encountered 13 time(s)
+                Unsupported operator aten::mul encountered 3 time(s)
+
+        
+        - gcn_lam
+            - gradient issues? 
