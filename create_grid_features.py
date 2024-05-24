@@ -44,10 +44,11 @@ def create_era5_grid_features(args, static_dir_path):
         (
             np.cos(grid_lats), 
             np.sin(grid_lons), 
-            np.cos(grid_lats)
+            np.cos(grid_lons)
         ), 
         dim=1
     )
+    torch.save(grid_features, os.path.join(static_dir_path, "grid_features_simple.pt"))
     
     static_data = era5_static_features(grid_xy)
     grid_features = torch.cat(

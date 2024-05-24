@@ -48,17 +48,20 @@ def create_era5_parameter_weights(args, static_dir_path):
     # across full dataset
     print("Computing mean and std.-dev. for parameters...")
     means = []
+    # sums = []
     squares = []
     for init_batch, target_batch, forcing_batch in tqdm(loader):
         batch = torch.cat(
             (init_batch, target_batch), dim=1
         )  # (N_batch, N_t, N_grid, d_features)
         means.append(torch.mean(batch, dim=(1, 2)))  # (N_batch, d_features,)
+        # sums.append(torch.sum(batch, dim=(1, 2)))  # (N_batch, d_features,)
         squares.append(
             torch.mean(batch**2, dim=(1, 2))
         )  # (N_batch, d_features,)
 
     mean = torch.mean(torch.cat(means, dim=0), dim=0)  # (d_features)
+    # sums = torch.sum(torch.cat(sums, dim=0), dim=0)  # (d_features)
     second_moment = torch.mean(torch.cat(squares, dim=0), dim=0)
     std = torch.sqrt(second_moment - mean**2)  # (d_features)
     
@@ -70,6 +73,7 @@ def create_era5_parameter_weights(args, static_dir_path):
     print("Saving mean, std.-dev, flux_stats...")
     torch.save(mean, os.path.join(static_dir_path, "parameter_mean.pt"))
     torch.save(std, os.path.join(static_dir_path, "parameter_std.pt"))
+    # torch.save(sums, os.path.join(static_dir_path, "parameter_sum.pt"))
     torch.save(flux_stats, os.path.join(static_dir_path, "flux_stats.pt"))
 
     # Compute mean and std.-dev. of one-step differences across the dataset

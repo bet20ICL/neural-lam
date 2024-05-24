@@ -105,6 +105,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
 
         # N_grid = N_x * N_y; d_features = N_vars * N_levels
         init_states = torch.stack((prev_prev_state, prev_state), dim=0) # (2, N_grid, d_features)
+        
         target_states = []
         for i in range(2, self.sample_length):
             target_states.append(self._get_sample(self.sample_names[idx+i]))
@@ -117,12 +118,13 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         
         # === Forcing features ===
         hour_inc = torch.arange(self.sample_length) * 6 # (sample_len,)
-
-        init_hour = self.sample_times[idx].hour
+        init_dt = self.sample_times[idx]
+        
+        init_hour = init_dt.hour
         hour_of_day = init_hour + hour_inc
 
-        start_of_year = dt.datetime(self.sample_times[i].year, 1, 1)
-        init_seconds_into_year = (self.sample_times[i] - start_of_year).total_seconds()
+        start_of_year = dt.datetime(init_dt.year, 1, 1)
+        init_seconds_into_year = (init_dt - start_of_year).total_seconds()
         seconds_into_year = init_seconds_into_year + hour_inc * 3600
 
         hour_angle = (hour_of_day / 24) * 2 * torch.pi 

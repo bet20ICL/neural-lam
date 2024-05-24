@@ -72,7 +72,7 @@ def load_static_data(dataset_name, device="cpu", args=None):
         np.load(os.path.join(static_dir_path, "parameter_weights.npy")),
         dtype=torch.float32,
         device=device,
-    )  # (d_f,)
+    )  # (d_f,) or (N_grid, d_f,)
     
     if args:
         if args.simple_grid:

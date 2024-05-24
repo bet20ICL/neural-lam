@@ -29,6 +29,7 @@ from graphcast_utils import (
     create_heterograph,
     get_edge_len,
     latlon2xyz,
+    xyz2latlon,
     find_subset_indices,
 )
 
@@ -90,10 +91,11 @@ class Graph:
             len([key for key in self.icospheres.keys() if "faces" in key]) - 2
         )
 
-        # flatten lat/lon gird
-        # (lat, lon, 2) -> (2, lat, lon) -> (2, lat*lon) -> (lat*lon, 2)
-        self.lat_lon_grid_flat = lat_lon_grid.permute(2, 0, 1).view(2, -1).permute(1, 0) # (lat*lon, 2)
-        self.local_lat_lon_grid_flat = local_lat_lon_grid.permute(2, 0, 1).reshape(2, -1).permute(1, 0) # (local_lat*local_lon, 2)
+        # flatten lat/lon grid (technically should be lon/lat)
+        self.lat_lon_grid_flat = lat_lon_grid.reshape(2, -1).T # (lat*lon, 2)
+        self.local_lat_lon_grid_flat = local_lat_lon_grid.reshape(2, -1).T # (lat*lon, 2)
+        print(f"Global grid shape: {self.lat_lon_grid_flat.shape}")
+        print(f"Local grid shape: {self.local_lat_lon_grid_flat.shape}")
         self.local2global_idxs = find_subset_indices(self.lat_lon_grid_flat, self.local_lat_lon_grid_flat) # (local_lat*local_lon,)
         self.local2global_idxs_set = set(self.local2global_idxs)
 
@@ -273,7 +275,7 @@ class Graph:
             print("m2g graph:", m2g_graph)
         return m2g_graph
     
-    def create_mesh_graph(self, verbose: bool = True) -> Tensor:
+    def create_mesh_graph(self, verbose: bool = True, debug: bool = False) -> Tensor:
         """Create the multimesh graph.
 
         Parameters
@@ -318,6 +320,9 @@ class Graph:
         mesh_graph.edata["x"] = mesh_graph.edata["x"].to(dtype=self.dtype)
         if verbose:
             print("mesh graph:", mesh_graph)
+        if debug:
+            mesh_pos = xyz2latlon(mesh_pos).to(dtype=self.dtype)
+            return mesh_graph, mesh_pos
         return mesh_graph
     
     def find_subset_graphs(self, verbose: bool = True):
@@ -392,8 +397,7 @@ def create_graphcast_mesh(args):
     icosophere_path = os.path.join(data_dir_path, "icospheres.json")
 
     nwp_xy_path = os.path.join(data_dir_path, "static", "nwp_xy.npy")
-    local_lat_lon_grid = np.load(nwp_xy_path) # (2, lon, lat) or (2, x, y)
-    local_lat_lon_grid = torch.from_numpy(local_lat_lon_grid).permute(2, 1, 0) # (lat, lon, 2)
+    local_lat_lon_grid =torch.from_numpy(np.load(nwp_xy_path)) # (2, lon, lat) or (2, x, y)
     print(f"Local area shape: {local_lat_lon_grid.shape}")
     print(f"Opened lat lon grid at {nwp_xy_path}.")
     
@@ -401,8 +405,8 @@ def create_graphcast_mesh(args):
     latitudes = torch.linspace(-90, 90, steps=input_res[0])
     longitudes = torch.linspace(-180, 180, steps=input_res[1] + 1)[1:]
     lat_lon_grid = torch.stack(
-        torch.meshgrid(latitudes, longitudes, indexing="ij"), dim=-1
-    ) # (lat, lon, 2)
+        torch.meshgrid(longitudes, latitudes, indexing="ij"), dim=0
+    ) # (2, lon, lat)
     print(f"Global area shape: {lat_lon_grid.shape}")
 
     graph = Graph(icosophere_path, lat_lon_grid, local_lat_lon_grid)
@@ -427,7 +431,7 @@ def create_graphcast_mesh(args):
                os.path.join(graph_dir_path, f"m2g_features.pt"))
     
     # ----- Mesh Graph ----- #
-    mesh_graph = graph.create_mesh_graph()
+    mesh_graph, mesh_pos = graph.create_mesh_graph(debug=True)
     src, dst = mesh_graph.edges()
     m2m_edge_index = torch.stack((src, dst)).to(torch.int64)
     torch.save([m2m_edge_index], 
@@ -436,3 +440,6 @@ def create_graphcast_mesh(args):
                os.path.join(graph_dir_path, f"m2m_features.pt"))
     torch.save([mesh_graph.ndata["x"]], 
                os.path.join(graph_dir_path, f"mesh_features.pt"))
+    
+    torch.save(mesh_pos, 
+               os.path.join(graph_dir_path, f"mesh_pos.pt"))

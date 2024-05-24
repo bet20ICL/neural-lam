@@ -1,16 +1,3 @@
-# Method Verification
-
-## Alignment of Data Features
-- `verify_method.ipynb`
-- 48 features are aligned in the order listed in `constants.ipynb`
-
-## Grid Feature Creation
-- `verify_method.ipynb`
-- grid features are being created as stated in graphcast
-
-## Data normalisation
-- ``
-
 # FYP Notes
 
 ## ERA5 Dataset
@@ -185,3 +172,71 @@ graph
         
         - gcn_lam
             - gradient issues? 
+
+# Thursday 
+
+# Method Verification
+
+## Alignment of Data Features
+- `nwp_xy.npy`
+- `samples/2022*.npy`
+- 48 features are aligned in the order listed in `constants.ipynb` (x)
+
+## Grid Feature Creation
+- `grid_features.npy`
+- grid features are being created as stated in graphcast (x)
+    - BUG FOUND! 
+    - using cos(lat), sin(lon), cos(lat) instead cos(lon)
+
+## Forcing Features
+- `era5_dataset.py`
+- forcing features created as stated (x) 
+    - BUG FOUND!
+    - using i instead of idx!!
+
+## Parameter Weights
+- `create_parameter_weights.py`
+- parameter weights created as stated (x)
+    - seems reasonable...
+
+## Data normalisation
+- `era5_dataset.py`, `create_parameter_weights.py`
+- global mean and var ()
+- step differences ()
+
+## Mesh Graph
+- `graphcast_mesh.py`
+- `graphcast_utils.py`
+- check locations of mesh nodes (x)
+- check mesh connectivity
+    - adjacent nodes connected (x)
+        - its hard to see if higher order edges are present
+        - if they are, they arent uniformly distributed across the mesh...
+- check g2m connectivity (x)
+    - grid node should connect to 
+- check m2g connectivity (x)
+    - each grid node is in the centre of a triangle, connect to the corners of the triangle
+
+
+# Sprint 0
+- finish verification above () 
+
+# Sprint 1
+- Graph Transformers ()
+    - come up with plan to implement ()
+- Graph U-Nets ()
+
+# Sprint 2
+- try rectangular graph on era5-uk ()
+
+# Sprint 3
+- space attention ()
+
+
+# TO ASK
+- is loading each timestep from memory (~300 MBs) efficient? maybe memory bottleneck?
+
+    - get runtime results between gat, gcn, graph-lam and compare
+    - what else can i do in that case?
+
+- hierarchical 

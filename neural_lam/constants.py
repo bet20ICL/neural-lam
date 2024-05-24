@@ -203,15 +203,15 @@ GRID_LIMITS = [  # In projection
 ]
 
 # # Create projection
-# LAMBERT_PROJ = cartopy.crs.LambertConformal(
-#     central_longitude=LAMBERT_PROJ_PARAMS["lon_0"],
-#     central_latitude=LAMBERT_PROJ_PARAMS["lat_0"],
-#     standard_parallels=(
-#         LAMBERT_PROJ_PARAMS["lat_1"],
-#         LAMBERT_PROJ_PARAMS["lat_2"],
-#     ),
-# )
-LAMBERT_PROJ = None
+LAMBERT_PROJ = cartopy.crs.LambertConformal(
+    central_longitude=LAMBERT_PROJ_PARAMS["lon_0"],
+    central_latitude=LAMBERT_PROJ_PARAMS["lat_0"],
+    standard_parallels=(
+        LAMBERT_PROJ_PARAMS["lat_1"],
+        LAMBERT_PROJ_PARAMS["lat_2"],
+    ),
+)
+# LAMBERT_PROJ = None
 
 # Data dimensions
 GRID_FORCING_DIM = 5 * 3 + 1  # 5 feat. for 3 time-step window + 1 batch-static
