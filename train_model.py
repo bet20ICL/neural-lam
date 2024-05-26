@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 import torch
 from lightning_fabric.utilities import seed
+import wandb
 
 # First-party
 from neural_lam import constants, utils
@@ -388,11 +389,15 @@ def main():
         trainer.test(model=model, dataloaders=eval_loader)
     else:
         # Train model
+        start_time = time.time()
         trainer.fit(
             model=model,
             train_dataloaders=train_loader,
             val_dataloaders=val_loader,
         )
+        end_time = time.time()
+        elapsed_time_mins = (end_time - start_time) / 60
+        wandb.log({"time_elapsed": elapsed_time_mins})
 
 
 if __name__ == "__main__":
