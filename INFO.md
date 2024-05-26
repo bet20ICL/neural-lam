@@ -109,7 +109,7 @@ graph
 
 # Communication
     - SEND
-        - present gcn vs graphcast results ()
+        - present gcn vs graphcast results (x)
         - find out how to calculate flops 
 
     - RECV
@@ -118,33 +118,33 @@ graph
 
 # Sprint 0
 - analyse gcn vs graphcast (x)
-- point cloud ()
-- grid features ()
+- point cloud (x)
+- grid features (x)
     - doc, 114955
-- grid_features, forcing features ()
+- grid_features, forcing features (x)
     - doc, 114956
-- set up sulis ()
-- gat ()
-- read weatherbench2 () 
-- sanity check against weatherbench 2 ()
+- set up sulis (kind of?)
+- gat (x)
+- read weatherbench2 (x) 
+- sanity check against weatherbench 2 (x)
 
 # Sprint 1
-- understand graph transformers ()
+- understand graph transformers (_)
 
 # Sprint 2
-- understand diff pool ()
+- understand diff pool (_)
 
 # Sprint 3
-- read aman's code ()
+- read aman's code (x)
 
 # Sprint 4
-- Stormer paper ()
-- ClimaX paper ()
-- ClimaX code ()
-- space attention ()
+- Stormer paper (_)
+- ClimaX paper (_)
+- ClimaX code (_)
+- space attention (_)
 
 # Sprint 4
-- train larger model ()
+- train larger model (_)
 
 # Sprint 5
 - set up training on cirrus (x)
@@ -199,11 +199,6 @@ graph
 - parameter weights created as stated (x)
     - seems reasonable...
 
-## Data normalisation
-- `era5_dataset.py`, `create_parameter_weights.py`
-- global mean and var ()
-- step differences ()
-
 ## Mesh Graph
 - `graphcast_mesh.py`
 - `graphcast_utils.py`
@@ -219,18 +214,18 @@ graph
 
 
 # Sprint 0
-- finish verification above () 
+- finish verification above (_) 
 
 # Sprint 1
-- Graph Transformers ()
-    - come up with plan to implement ()
-- Graph U-Nets ()
+- Graph Transformers (x)
+    - come up with plan to implement (_)
+- Graph U-Nets (_)
 
 # Sprint 2
-- try rectangular graph on era5-uk ()
+- try rectangular graph on era5-uk (_)
 
 # Sprint 3
-- space attention ()
+- space attention (_)
 
 
 # TO ASK
@@ -240,3 +235,29 @@ graph
     - what else can i do in that case?
 
 - hierarchical 
+
+
+# Friday 
+
+# Sprint 0
+- Log times in WandB (x)
+
+# Saturday
+- Graph U-Nets (x)
+- DiffPool (x)
+
+## Data normalisation
+- `era5_dataset.py`, `create_parameter_weights.py`
+- global mean and var (_)
+- step differences (x)
+
+# Sunday
+- Space Attention ()
+- global mean and var (x)
+- whats the error of predicting the mean ()
+
+# Sprint 2
+- try rectangular graph on era5-uk ()
+
+# Sprint 3
+- space attention ()
