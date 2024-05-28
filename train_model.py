@@ -255,7 +255,7 @@ def main():
     # Set seed
     seed.seed_everything(args.seed)
     
-    if args.dataset == "era5_uk":
+    if "era5" in args.dataset:
         train_set = ERA5UKDataset(
             args.dataset,
             pred_length=args.ar_steps,
@@ -380,7 +380,7 @@ def main():
         if args.eval == "val":
             eval_loader = val_loader
         else:  # Test
-            if args.dataset == "era5_uk":
+            if "era5" in args.dataset:
                 # TODO: currently using val set for testing
                 test_set = val_set
             else:

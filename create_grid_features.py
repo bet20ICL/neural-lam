@@ -8,10 +8,10 @@ import torch
 import xarray as xr
 
 # First party
-from era5_data_proc import uk_subset
+from era5_data_proc import uk_subset, uk_small_subset, uk_big_subset
 from neural_lam.constants import ERA5UKConstants
 
-def era5_static_features(grid_xy):
+def era5_static_features(grid_xy, dataset):
     """Get static features for the grid nodes (surface geopotential and land sea mask)
 
     Args:
@@ -20,9 +20,16 @@ def era5_static_features(grid_xy):
     Returns:
         array: _description_
     """
+    if dataset == "era5_uk":
+        subset = uk_subset
+    elif dataset == "era5_uk_small":
+        subset = uk_small_subset
+    elif dataset == "era5_uk_big":
+        subset = uk_big_subset
+        
     static_dataset_path = os.path.join(ERA5UKConstants.RAW_ERA5_PATH, "static_variables.nc")
     static_data = xr.open_dataset(static_dataset_path)
-    static_data = uk_subset(static_data)
+    static_data = subset(static_data)
     static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_x, N_y)
     static_data = static_data.transpose(2, 1, 0).reshape(grid_xy.shape[0], -1) # (N_x * N_y, N_var)
     return static_data
@@ -50,7 +57,7 @@ def create_era5_grid_features(args, static_dir_path):
     )
     torch.save(grid_features, os.path.join(static_dir_path, "grid_features_simple.pt"))
     
-    static_data = era5_static_features(grid_xy)
+    static_data = era5_static_features(grid_xy, args.dataset)
     grid_features = torch.cat(
         (grid_features, torch.tensor(static_data)), dim=1
     ) # (N_grid, N_var)

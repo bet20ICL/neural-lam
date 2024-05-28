@@ -191,7 +191,7 @@ def get_args():
 def main():
     args = get_args()
     
-    if args.dataset == "era5_uk":
+    if "era5" in args.dataset:
         print("Creating graph for ERA5 dataset")
         create_graphcast_mesh(args)
         return

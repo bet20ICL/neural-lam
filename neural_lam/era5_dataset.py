@@ -40,7 +40,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         self.subsample_step = subsample_step
         
         if split == "train":
-            pattern = "*.npy" if args.two_years else "2022*.npy"
+            pattern = "*.npy" if args and args.two_years else "2022*.npy"
             sample_paths = glob.glob(os.path.join(self.sample_dir_path, pattern))
             # e.g. n = '20200101000000.npy'
             self.sample_names = [os.path.basename(path) for path in sample_paths] 

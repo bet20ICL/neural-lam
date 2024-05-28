@@ -144,5 +144,18 @@ def create_xy(dataset, subset=None):
     np.save(os.path.join(proccessed_dataset_path, "border_mask.npy"), border_mask)
 
 if __name__ == "__main__":
-    save_dataset_samples("era5_uk", subset=uk_subset)
-    create_xy("era5_uk", subset=uk_subset)
+    # name = "era5_uk"
+    # subset = uk_subset
+    # save_dataset_samples(name, subset=subset)
+    # create_xy(name, subset=subset)
+    
+    name = "era5_uk_big"
+    subset = uk_big_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)
+    
+    name = "era5_uk_small"
+    subset = uk_small_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)
+    
