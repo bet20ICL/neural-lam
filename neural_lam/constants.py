@@ -4,9 +4,9 @@ import numpy as np
 
 class ERA5UKConstants:
     GRID_SHAPE = (65, 57)  # (y, x)
-    GRID_FORCING_DIM = 0 # 4 variables * 3 time steps
+    GRID_FORCING_DIM = 12 # 4 variables * 3 time steps
     GRID_STATE_DIM = 8 * 6 # 8 levels * 6 variables
-    HEAT_MAP_VARS = [4, 22, 13, 30, 38, 46]
+    HEAT_MAP_VARS = [4, 22, 13, 30, 38, 46] # indices of the variables to plot in the heatmap summary
     VAL_STEP_LOG_ERRORS = np.array([1, 2, 4, 8, 16]) 
     METRICS_WATCH = [
         "val_rmse",
@@ -26,7 +26,21 @@ class ERA5UKConstants:
     VAL_MONTHS = ["01", "04", "07", "10"]
     # RAW_ERA5_PATH = "/work/ec249/ec249/bet20/dataset/era5/global_full"
     RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
-        
+    CLIMATOLOGY = {
+        "z500": 1145.023,
+        "z850": 779.7801,
+        "q500": 502.0469 * 1e-6,
+        "q850": 0.001520412,
+        "t500": 4.195002,
+        "t850": 4.218556,
+        "v500": 10.82452,
+        "v850": 6.741851,
+        "u500": 10.6181,
+        "u850": 6.966284,
+        # "w500": ,
+        # "w850": ,
+    }
+    
 class MEPSConstants:
     GRID_SHAPE = (268, 238)  # (y, x)
     GRID_FORCING_DIM = 5 * 3 + 1  # 5 feat. for 3 time-step window + 1 batch-static

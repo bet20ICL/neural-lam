@@ -68,7 +68,7 @@ def save_dataset_samples(dataset, subset=None):
         - samples/{split}/{date}.npy
     """
     # Training Files
-    nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022_10.nc')
+    nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022*.nc')
     proccessed_dataset_path = f"data/{dataset}/samples/train"
     os.makedirs(proccessed_dataset_path, exist_ok=True)
     for j, filepath in enumerate(nc_files):
@@ -115,5 +115,5 @@ def create_xy(dataset, subset=None):
     np.save(os.path.join(proccessed_dataset_path, "border_mask.npy"), border_mask)
 
 if __name__ == "__main__":
-    # save_dataset_samples("era5_uk", subset=uk_subset)
+    save_dataset_samples("era5_uk", subset=uk_subset)
     create_xy("era5_uk", subset=uk_subset)

@@ -25,6 +25,7 @@ class ARModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.lr = args.lr
+        self.args = args
         self.constants = args.constants
 
         # Load static features for grid/data
@@ -351,10 +352,10 @@ class ARModel(pl.LightningModule):
             )
 
             self.plot_examples(
-                batch, n_additional_examples, prediction=prediction
+                batch, n_additional_examples, prediction=prediction, args=self.args
             )
 
-    def plot_examples(self, batch, n_examples, prediction=None):
+    def plot_examples(self, batch, n_examples, prediction=None, args=None):
         """
         (Used in test_step only)
         Plot the first n_examples forecasts from batch
@@ -398,41 +399,43 @@ class ARModel(pl.LightningModule):
             )  # (d_f,)
             var_vranges = list(zip(var_vmin, var_vmax))
 
-            # Iterate over prediction horizon time steps
-            for t_i, (pred_t, target_t) in enumerate(
-                zip(pred_slice, target_slice), start=1
-            ):
-                # Create one figure per variable at this time step
-                var_figs = [
-                    vis.plot_prediction(
-                        pred_t[:, var_i],
-                        target_t[:, var_i],
-                        self.interior_mask[:, 0],
-                        title=f"{var_name} ({var_unit}), "
-                        f"t={t_i} ({self.step_length*t_i} h)",
-                        vrange=var_vrange,
-                    )
-                    for var_i, (var_name, var_unit, var_vrange) in enumerate(
-                        zip(
-                            self.constants.PARAM_NAMES_SHORT,
-                            self.constants.PARAM_UNITS,
-                            var_vranges,
+            # TODO: write code for plotting ERA5 predictions as well
+            if args and "era5" not in args.dataset:
+                # Iterate over prediction horizon time steps
+                for t_i, (pred_t, target_t) in enumerate(
+                    zip(pred_slice, target_slice), start=1
+                ):
+                    # Create one figure per variable at this time step
+                    var_figs = [
+                        vis.plot_prediction(
+                            pred_t[:, var_i],
+                            target_t[:, var_i],
+                            self.interior_mask[:, 0],
+                            title=f"{var_name} ({var_unit}), "
+                            f"t={t_i} ({self.step_length*t_i} h)",
+                            vrange=var_vrange,
                         )
-                    )
-                ]
+                        for var_i, (var_name, var_unit, var_vrange) in enumerate(
+                            zip(
+                                self.constants.PARAM_NAMES_SHORT,
+                                self.constants.PARAM_UNITS,
+                                var_vranges,
+                            )
+                        )
+                    ]
 
-                example_i = self.plotted_examples
-                wandb.log(
-                    {
-                        f"{var_name}_example_{example_i}": wandb.Image(fig)
-                        for var_name, fig in zip(
-                            self.constants.PARAM_NAMES_SHORT, var_figs
-                        )
-                    }
-                )
-                plt.close(
-                    "all"
-                )  # Close all figs for this time step, saves memory
+                    example_i = self.plotted_examples
+                    wandb.log(
+                        {
+                            f"{var_name}_example_{example_i}": wandb.Image(fig)
+                            for var_name, fig in zip(
+                                self.constants.PARAM_NAMES_SHORT, var_figs
+                            )
+                        }
+                    )
+                    plt.close(
+                        "all"
+                    )  # Close all figs for this time step, saves memory
 
             # Save pred and target as .pt files
             torch.save(
@@ -469,10 +472,19 @@ class ARModel(pl.LightningModule):
         )
         log_dict[full_log_name] = wandb.Image(metric_fig)
         
+        # Plot a summary error map 
+        # The same figure as above but with a subset of variables for clarity
         summary_metric_fig = vis.plot_error_map(
             metric_tensor, self.constants, step_length=self.step_length, summary=True
         )
         log_dict[f"{full_log_name}_summary"] = wandb.Image(summary_metric_fig)
+        
+        # Plot rollout error curves
+        summary_metric_curves = vis.plot_error_curves(
+            metric_tensor, self.constants, step_length=self.step_length, summary=True
+        )
+        for name, fig in summary_metric_curves:
+            log_dict[f"{full_log_name}_{name}_rollout"] = wandb.Image(fig)
 
         if prefix == "test":
             # Save pdf
@@ -555,32 +567,35 @@ class ARModel(pl.LightningModule):
                 spatial_loss_tensor, dim=0
             )  # (N_log, num_grid_nodes)
 
-            loss_map_figs = [
-                vis.plot_spatial_error(
-                    loss_map,
-                    self.interior_mask[:, 0],
-                    title=f"Test loss, t={t_i} ({self.step_length*t_i} h)",
-                )
-                for t_i, loss_map in zip(
-                    self.constants.VAL_STEP_LOG_ERRORS, mean_spatial_loss
-                )
-            ]
+            # TODO: figure out plotting for ERA5
+            if "era5" not in self.args.dataset:
+                loss_map_figs = [
+                    vis.plot_spatial_error(
+                        loss_map,
+                        self.interior_mask[:, 0],
+                        title=f"Test loss, t={t_i} ({self.step_length*t_i} h)",
+                    )
+                    for t_i, loss_map in zip(
+                        self.constants.VAL_STEP_LOG_ERRORS, mean_spatial_loss
+                    )
+                ]
 
-            # log all to same wandb key, sequentially
-            for fig in loss_map_figs:
-                wandb.log({"test_loss": wandb.Image(fig)})
+                # log all to same wandb key, sequentially
+                for fig in loss_map_figs:
+                    wandb.log({"test_loss": wandb.Image(fig)})
 
-            # also make without title and save as pdf
-            pdf_loss_map_figs = [
-                vis.plot_spatial_error(loss_map, self.interior_mask[:, 0])
-                for loss_map in mean_spatial_loss
-            ]
-            pdf_loss_maps_dir = os.path.join(wandb.run.dir, "spatial_loss_maps")
-            os.makedirs(pdf_loss_maps_dir, exist_ok=True)
-            for t_i, fig in zip(
-                self.constants.VAL_STEP_LOG_ERRORS, pdf_loss_map_figs
-            ):
-                fig.savefig(os.path.join(pdf_loss_maps_dir, f"loss_t{t_i}.pdf"))
+                # also make without title and save as pdf
+                pdf_loss_map_figs = [
+                    vis.plot_spatial_error(loss_map, self.interior_mask[:, 0])
+                    for loss_map in mean_spatial_loss
+                ]
+                pdf_loss_maps_dir = os.path.join(wandb.run.dir, "spatial_loss_maps")
+                os.makedirs(pdf_loss_maps_dir, exist_ok=True)
+                for t_i, fig in zip(
+                    self.constants.VAL_STEP_LOG_ERRORS, pdf_loss_map_figs
+                ):
+                    fig.savefig(os.path.join(pdf_loss_maps_dir, f"loss_t{t_i}.pdf"))
+            
             # save mean spatial loss as .pt file also
             torch.save(
                 mean_spatial_loss.cpu(),

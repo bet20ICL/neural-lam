@@ -16,6 +16,7 @@ from neural_lam.models.hi_lam import HiLAM
 from neural_lam.models.hi_lam_parallel import HiLAMParallel
 from neural_lam.models.gcn_lam import GCNLAM
 from neural_lam.models.gat_lam import GATLAM
+from neural_lam.models.stats_model import StatsModel
 
 from neural_lam.weather_dataset import WeatherDataset
 from neural_lam.era5_dataset import ERA5UKDataset
@@ -33,6 +34,7 @@ MODELS = {
     "gat_lam": GATLAM,
     "hi_lam": HiLAM,
     "hi_lam_parallel": HiLAMParallel,
+    "stats_model": StatsModel,
 }
 
 def get_args():
@@ -372,14 +374,20 @@ def main():
         if args.eval == "val":
             eval_loader = val_loader
         else:  # Test
-            eval_loader = torch.utils.data.DataLoader(
-                WeatherDataset(
+            if args.dataset == "era5_uk":
+                # TODO: currently using val set for testing
+                test_set = val_set
+            else:
+                test_set = WeatherDataset(
                     args.dataset,
                     pred_length=max_pred_length,
                     split="test",
                     subsample_step=args.step_length,
                     subset=bool(args.subset_ds),
-                ),
+                )
+            
+            eval_loader = torch.utils.data.DataLoader(
+                test_set,
                 args.batch_size,
                 shuffle=False,
                 num_workers=args.n_workers,

@@ -6,9 +6,45 @@ import numpy as np
 # First-party
 from neural_lam import constants, utils
 
+def plot_error_curves(errors, dataset_constants, title=None, step_length=6, summary=False):
+    """
+    Plot error curves for different variables at different
+    prediction horizons
+    errors: (pred_steps, d_f)
+    """
+    errors_np = errors.T.cpu().numpy()  # (d_f, pred_steps)
+    var_subset = dataset_constants.HEAT_MAP_VARS if summary else range(errors_np.shape[0])
+    d_f, pred_steps = errors_np.shape
+    
+    figs = []
+    for var_idx in var_subset:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(errors_np[var_idx, :], marker="o")
+        
+        ax.set_xticks(np.arange(pred_steps))
+        pred_hor_i = np.arange(pred_steps) + 1  # Prediction horiz. in index
+        pred_hor_h = step_length * pred_hor_i  # Prediction horiz. in hours
+        ax.set_xticklabels(pred_hor_h)
+        
+        ax.set_xlabel("Lead time (h)")
+        ax.set_ylabel("Normalized error")
+        ax.set_title(dataset_constants.PARAM_NAMES_SHORT[var_idx])
+        # ax.legend()
+        
+        if title:
+            ax.set_title(title)
+        
+        var_name = dataset_constants.PARAM_NAMES_SHORT[var_idx]
+        var_climatology = dataset_constants.CLIMATOLOGY.get(var_name)
+        if var_climatology:
+            ax.axhline(var_climatology, color="grey", linestyle="--")
+
+        figs.append((var_name, fig))
+
+    return figs
 
 @matplotlib.rc_context(utils.fractional_plot_bundle(1))
-def plot_error_map(errors, dataset_constants, title=None, step_length=3, summary=False):
+def plot_error_map(errors, dataset_constants, title=None, step_length=6, summary=False):
     """
     Plot a heatmap of errors of different variables at different
     predictions horizons

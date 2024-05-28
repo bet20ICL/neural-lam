@@ -2,7 +2,7 @@
 # python era5_download_data.py
 
 # Long!
-# python era5_data_proc.npy
+python era5_data_proc.py
 
 python create_mesh.py --dataset era5_uk --graph uk_graphcast
 

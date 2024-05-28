@@ -252,12 +252,35 @@ graph
 - step differences (x)
 
 # Sunday
-- Space Attention ()
 - global mean and var (x)
-- whats the error of predicting the mean ()
+- whats the error of predicting the mean (climatology) (x)
 
 # Sprint 2
-- try rectangular graph on era5-uk ()
+- try rectangular graph on era5-uk (_)
 
 # Sprint 3
-- space attention ()
+- space attention (_)
+
+# Sprint 4
+- plot metric against rollout (x)
+- run evaluation against climatology on WeatherBench2 (_)
+- Stormer and ClimaX (_)
+    - understand attention aggregation (_)
+
+- come up with a plan to implement space attention (_)
+
+# BackLog
+- plot error on map ()
+
+# Monday 
+
+# Sprint 0
+- run evaluation against climatology on WeatherBench2 ()
+- Stormer and ClimaX ()
+    - understand attention aggregation ()
+
+- come up with a plan to implement space attention ()
+
+# Sprint 1
+- try rectangular grid on ERA5 UK ()
+- 
