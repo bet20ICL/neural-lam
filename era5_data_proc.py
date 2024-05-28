@@ -19,6 +19,35 @@ uk_bbox = {
     "lon_min": -10,
 }
 
+def uk_big_subset(data):
+    """
+    data: xarray dataset
+    Get a larger area around the UK, somewhat arbitrarily chosen to fit onto GPU memory
+        
+    [-13.0, 7.0, 45.0, 65.0]
+    Dodgy hardcoding of lat/lon values due to wrap around
+    """
+    # Slice for the longitude from 350 to 360
+    subset1 = data.sel(latitude=slice(65, 45), longitude=slice(360-13, 360))
+    # Slice for the longitude from 0 to 4
+    subset2 = data.sel(latitude=slice(65, 45), longitude=slice(0, 7))
+    # Concatenate the two subsets along the longitude dimension
+    uk_subset = xr.concat([subset1, subset2], dim='longitude')
+    return uk_subset
+
+def uk_small_subset(data):
+    """
+    contains all the settlements (habited places) in the uk 
+    [-8.00, 1.75, 49.75, 61.00]
+    """
+    # Slice for the longitude from 350 to 360
+    subset1 = data.sel(latitude=slice(61, 49.75), longitude=slice(360-8, 360))
+    # Slice for the longitude from 0 to 4
+    subset2 = data.sel(latitude=slice(61, 49.75), longitude=slice(0, 1.75))
+    # Concatenate the two subsets along the longitude dimension
+    uk_subset = xr.concat([subset1, subset2], dim='longitude')
+    return uk_subset
+
 def uk_subset(data):
     """
     data: xarray dataset
