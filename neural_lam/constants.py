@@ -24,8 +24,8 @@ class ERA5UKConstants:
     PARAM_NAMES_SHORT = PARAM_NAMES
     PARAM_UNITS = ['m**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1']
     VAL_MONTHS = ["01", "04", "07", "10"]
-    # RAW_ERA5_PATH = "/work/ec249/ec249/bet20/dataset/era5/global_full"
-    RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
+    RAW_ERA5_PATH = "/work/ec249/ec249/bet20/dataset/era5/global_full"
+    # RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
     CLIMATOLOGY = {
         "z500": 1145.023,
         "z850": 779.7801,
@@ -40,7 +40,6 @@ class ERA5UKConstants:
         # "w500": ,
         # "w850": ,
     }
-    
 class MEPSConstants:
     GRID_SHAPE = (268, 238)  # (y, x)
     GRID_FORCING_DIM = 5 * 3 + 1  # 5 feat. for 3 time-step window + 1 batch-static

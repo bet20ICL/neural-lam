@@ -227,6 +227,12 @@ def get_args():
         default=0,
         help="Do not add forcing features to dataset (default: 0 (false))",
     )
+    parser.add_argument(
+        "--two_years",
+        type=int,
+        default=0,
+        help="Use two years of data for training (default: 0 (false))",
+    )
     args = parser.parse_args()
 
     # Asserts for arguments
