@@ -63,11 +63,10 @@ def uk_subset(data):
     uk_subset = xr.concat([subset1, subset2], dim='longitude')
     return uk_subset
 
-def proc_file(filepath, proccessed_dataset_path, subset=None):
+def proc_file(data, proccessed_dataset_path, subset=None):
     """
     Process a single .nc file into .npy files
     """
-    data = xr.open_dataset(filepath)
     if subset:
         data = subset(data)
     
@@ -101,14 +100,16 @@ def save_dataset_samples(dataset, subset=None):
     proccessed_dataset_path = f"data/{dataset}/samples/train"
     os.makedirs(proccessed_dataset_path, exist_ok=True)
     for j, filepath in enumerate(nc_files):
-        proc_file(filepath, proccessed_dataset_path, subset=subset)
+        data = xr.open_dataset(filepath)
+        proc_file(data, proccessed_dataset_path, subset=subset)
         
     # Validation Files
     for month in ERA5UKConstants.VAL_MONTHS:
         filepath = f'{RAW_ERA5_PATH}/2023_{month}.nc'
         proccessed_dataset_path = f"data/{dataset}/samples/val/{month}"
         os.makedirs(proccessed_dataset_path, exist_ok=True)
-        proc_file(filepath, proccessed_dataset_path, subset=subset)    
+        data = xr.open_dataset(filepath)
+        proc_file(data, proccessed_dataset_path, subset=subset)    
 
 def create_xy(dataset, subset=None):
     """
@@ -142,20 +143,93 @@ def create_xy(dataset, subset=None):
     # Create border mask (is all zero for ERA5 dataset since there is no border)
     border_mask = np.zeros(grid_array.shape[1:], dtype=bool)
     np.save(os.path.join(proccessed_dataset_path, "border_mask.npy"), border_mask)
+    
+# TODO: refactor this shit
+def _create_xy(data, dataset, subset=None):
+    """
+    Creates for ERA5 dataset
+        - nwp_xy.npy
+        - border_mask.npy
+    """
+    proccessed_dataset_path = f"data/{dataset}/static"
+    os.makedirs(proccessed_dataset_path, exist_ok=True)
+    
+    if subset:
+        data = subset(data)
+
+    longitudes = data.longitude.values
+    longitudes = np.where(longitudes > 180, longitudes - 360, longitudes)
+    latitudes = data.latitude.values
+
+    t_lon = torch.from_numpy(longitudes)
+    t_lat = torch.from_numpy(latitudes)
+
+    lon_lat_grid = torch.stack(
+        torch.meshgrid(t_lon, t_lat, indexing="ij"), dim=0
+    ) # (2, lon, lat) or (2, x, y)
+
+    grid_array = lon_lat_grid.numpy()
+    np.save(os.path.join(proccessed_dataset_path, "nwp_xy.npy"), grid_array)
+    
+    # Create border mask (is all zero for ERA5 dataset since there is no border)
+    border_mask = np.zeros(grid_array.shape[1:], dtype=bool)
+    np.save(os.path.join(proccessed_dataset_path, "border_mask.npy"), border_mask)
+    
+def _save_dataset_samples(dataset, subset=None):
+    """
+    Convert ERA5 netcdf (.nc) files to numpy array files.
+    Optionally take a subset of the ERA5 data.
+    
+    Each .nc file contains data for one month.
+    We extract each time step from the data and save as a numpy array.
+    
+    Creates for ERA5 dataset:
+        - samples/{split}/{date}.npy
+    """
+    # Training Files
+    nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022*.nc')
+    proccessed_dataset_path = f"data/{dataset}/samples/train"
+    os.makedirs(proccessed_dataset_path, exist_ok=True)
+    for j, filepath in enumerate(nc_files):
+        data = open_file(filepath, coarsen=22)
+        proc_file(data, proccessed_dataset_path, subset=subset)
+        
+    # Validation Files
+    for month in ERA5UKConstants.VAL_MONTHS:
+        filepath = f'{RAW_ERA5_PATH}/2023_{month}.nc'
+        proccessed_dataset_path = f"data/{dataset}/samples/val/{month}"
+        os.makedirs(proccessed_dataset_path, exist_ok=True)
+        data = open_file(filepath, coarsen=22)
+        proc_file(data, proccessed_dataset_path, subset=subset)   
+        
+def open_file(filepath, coarsen=None):
+    data = xr.open_dataset(filepath, chunks={"time": 4})
+    if coarsen:
+        data = data.coarsen(longitude=coarsen, latitude=coarsen, boundary="pad").mean()
+    return data
+
+def make_global_dataset():
+    name = "era5_global"
+    _save_dataset_samples(name)
+    
+    nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022*.nc')
+    data = open_file(nc_files[0], coarsen=22)
+    _create_xy(data, name)
 
 if __name__ == "__main__":
+    make_global_dataset()
+    
     # name = "era5_uk"
     # subset = uk_subset
     # save_dataset_samples(name, subset=subset)
     # create_xy(name, subset=subset)
     
-    name = "era5_uk_big"
-    subset = uk_big_subset
-    save_dataset_samples(name, subset=subset)
-    create_xy(name, subset=subset)
+    # name = "era5_uk_big"
+    # subset = uk_big_subset
+    # save_dataset_samples(name, subset=subset)
+    # create_xy(name, subset=subset)
     
-    name = "era5_uk_small"
-    subset = uk_small_subset
-    save_dataset_samples(name, subset=subset)
-    create_xy(name, subset=subset)
-    
+    # name = "era5_uk_small"
+    # subset = uk_small_subset
+    # save_dataset_samples(name, subset=subset)
+    # create_xy(name, subset=subset)

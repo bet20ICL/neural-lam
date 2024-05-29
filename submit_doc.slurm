@@ -23,5 +23,8 @@ which python
 # python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 4
 # python train_model.py --model stats_model --dataset era5_uk --graph uk_graphcast --batch_size 4 --no_forcing 1 --epochs 1
 
-python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 8 --epochs 5
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_graphcast --batch_size 8
 
+
+# python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 8
+python train_model.py --model graph_lam --dataset era5_global --graph global_graphcast --batch_size 8

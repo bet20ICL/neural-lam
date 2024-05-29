@@ -8,7 +8,7 @@ import torch
 import xarray as xr
 
 # First party
-from era5_data_proc import uk_subset, uk_small_subset, uk_big_subset
+from era5_data_proc import uk_subset, uk_small_subset, uk_big_subset, open_file
 from neural_lam.constants import ERA5UKConstants
 
 def era5_static_features(grid_xy, dataset):
@@ -20,16 +20,21 @@ def era5_static_features(grid_xy, dataset):
     Returns:
         array: _description_
     """
-    if dataset == "era5_uk":
-        subset = uk_subset
-    elif dataset == "era5_uk_small":
-        subset = uk_small_subset
-    elif dataset == "era5_uk_big":
-        subset = uk_big_subset
-        
+    
     static_dataset_path = os.path.join(ERA5UKConstants.RAW_ERA5_PATH, "static_variables.nc")
-    static_data = xr.open_dataset(static_dataset_path)
-    static_data = subset(static_data)
+    
+    if dataset == "era5_global":
+        static_data = open_file(static_dataset_path, coarsen=22)
+    else:
+        static_data = xr.open_dataset(static_dataset_path)
+        if dataset == "era5_uk":
+            subset = uk_subset
+        elif dataset == "era5_uk_small":
+            subset = uk_small_subset
+        elif dataset == "era5_uk_big":
+            subset = uk_big_subset
+        static_data = subset(static_data)
+        
     static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_x, N_y)
     static_data = static_data.transpose(2, 1, 0).reshape(grid_xy.shape[0], -1) # (N_x * N_y, N_var)
     return static_data

@@ -14,6 +14,7 @@ from torch_geometric.utils.convert import from_networkx
 
 # First-party
 from graphcast_mesh import create_graphcast_mesh
+from graphcast_global import create_graphcast_global
 
 def plot_graph(graph, title=None):
     fig, axis = plt.subplots(figsize=(8, 8), dpi=200)  # W,H
@@ -185,6 +186,12 @@ def get_args():
         default=0,
         help="Generate hierarchical mesh graph (default: 0, no)",
     )
+    parser.add_argument(
+        "--max_order",
+        type=int,
+        default=None,
+        help="Maximum order of the mesh graph (default: 2)",
+    )
     args = parser.parse_args()
     return args
 
@@ -193,6 +200,11 @@ def main():
     
     if "era5" in args.dataset:
         print("Creating graph for ERA5 dataset")
+        
+        if "global" in args.dataset:
+            create_graphcast_global(args)
+            return
+            
         create_graphcast_mesh(args)
         return
     

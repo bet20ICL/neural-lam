@@ -30,7 +30,6 @@ from graphcast_utils import (
     get_edge_len,
     latlon2xyz,
     xyz2latlon,
-    find_subset_indices,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,7 +71,6 @@ class Graph:
         self, 
         icospheres_path: str, 
         lat_lon_grid: Tensor, 
-        local_lat_lon_grid=None, 
         max_order=None,
         dtype=torch.float
     ) -> None:
@@ -94,21 +92,13 @@ class Graph:
         self.icospheres = icospheres
         self.max_order = (
             len([key for key in self.icospheres.keys() if "faces" in key]) - 2
-        )
+        ) if max_order is None else max_order
 
-        # flatten lat/lon grid
-        self.lat_lon_grid_flat = lat_lon_grid.reshape(2, -1).T # (lat*lon, 2)
-        self.local_lat_lon_grid_flat = local_lat_lon_grid.reshape(2, -1).T # (lat*lon, 2)
-        
+        # flatten lat/lon gird
+        self.lat_lon_grid_flat = lat_lon_grid.reshape(2, -1).T
         # Swap lon/lat to lat/lon
         self.lat_lon_grid_flat = self.lat_lon_grid_flat[:, [1,0]]
-        self.local_lat_lon_grid_flat = self.local_lat_lon_grid_flat[:, [1,0]]
         
-        print(f"Global grid shape: {self.lat_lon_grid_flat.shape}")
-        print(f"Local grid shape: {self.local_lat_lon_grid_flat.shape}")
-        self.local2global_idxs = find_subset_indices(self.lat_lon_grid_flat, self.local_lat_lon_grid_flat) # (local_lat*local_lon,)
-        self.local2global_idxs_set = set(self.local2global_idxs)
-
     def create_g2m_graph(self, verbose: bool = True) -> Tensor:
         """Create the graph2mesh graph.
 
@@ -147,16 +137,13 @@ class Graph:
         edge_len = max([edge_len_1, edge_len_2, edge_len_3])
 
         # create the grid2mesh bipartite graph
-        cartesian_grid = latlon2xyz(self.lat_lon_grid_flat) # (lat*lon, 3)
+        cartesian_grid = latlon2xyz(self.lat_lon_grid_flat)
         n_nbrs = 4
         neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(
-            self.icospheres["order_" + str(self.max_order) + "_vertices"] # (40962, 3)
+            self.icospheres["order_" + str(self.max_order) + "_vertices"]
         )
-        # for each grid node, find the k closest mesh nodes
-        distances, indices = neighbors.kneighbors(cartesian_grid) # both are (lat*lon, n_nbrs)
-        
-        # src: indices of the grid nodes in full grid
-        # dst: indices of the mesh nodes in full mesh
+        distances, indices = neighbors.kneighbors(cartesian_grid)
+
         src, dst = [], []
         for i in range(len(cartesian_grid)):
             for j in range(n_nbrs):
@@ -166,33 +153,13 @@ class Graph:
                     # NOTE this gives 1,624,344 edges, in the paper it is 1,618,746
                     # this number is very sensitive to the chosen edge_len, not clear
                     # in the paper what they use.
-        
-        # get edges in subgraph
-        # add grid node to subset if it is in the local grid
-        src_subset = [s for s in src if s in self.local2global_idxs_set]
-        # for each grid node, add the corresponding mesh node to the subset, if it is in the local grid
-        dst_subset = [dst[i] for i in range(len(src)) if src[i] in self.local2global_idxs_set]
-        
-        # subset of mesh nodes
-        self.g2m_node_subset = sorted(list(set(dst_subset)))
-        self.g2m_node_subset_set = set(dst_subset)
-        
-        # re-index the src and dst to match the new node indices
-        # src: indices of grid nodes in subgrid
-        src = [self.local2global_idxs.index(i) for i in src_subset]
-        # dst: indices of mesh nodes in submesh
-        dst = [self.g2m_node_subset.index(i) for i in dst_subset]
-    
-        # subsets of features
-        cartesian_grid = cartesian_grid[self.local2global_idxs]
-        mesh_node_features = [self.icospheres["order_" + str(self.max_order) + "_vertices"][i] for i in self.g2m_node_subset]
-        
+
         g2m_graph = create_heterograph(
             src, dst, ("grid", "g2m", "mesh"), dtype=torch.int32
-        )
+        )  # number of edges is 3,114,720, exactly matches with the paper
         g2m_graph.srcdata["pos"] = cartesian_grid.to(torch.float32)
         g2m_graph.dstdata["pos"] = torch.tensor(
-            mesh_node_features,
+            self.icospheres["order_" + str(self.max_order) + "_vertices"],
             dtype=torch.float32,
         )
         g2m_graph = add_edge_features(
@@ -225,45 +192,26 @@ class Graph:
         DGLGraph
             Mesh2grid graph.
         """
+        # create the mesh2grid bipartite graph
         cartesian_grid = latlon2xyz(self.lat_lon_grid_flat)
         n_nbrs = 1
-        # find the closest face centroid for each grid point
         neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(
             self.icospheres["order_" + str(self.max_order) + "_face_centroid"]
         )
-        _, indices = neighbors.kneighbors(cartesian_grid) # (lat*lon, 1)
-        indices = indices.flatten() # (lat*lon,) 
-        
-        # get edge subsets
-        # src_subset = [
-        #     p
-        #     for i in indices[self.local2global_idxs]
-        #     for p in self.icospheres["order_" + str(self.max_order) + "_faces"][i]
-        # ]
-        # dst_subset = [i for i in self.local2global_idxs for _ in range(3)]
-        src_subset, dst_subset = [], []
-        # for each grid node and corresponding mesh face
-        for grid_idx, mesh_idx in enumerate(indices[self.local2global_idxs]):
-            # for each of the three vertices of the face
-            for p in self.icospheres["order_" + str(self.max_order) + "_faces"][mesh_idx]:
-                # if the vertex is in the mesh subset
-                if p in self.g2m_node_subset_set:
-                    src_subset.append(p)
-                    dst_subset.append(grid_idx)
-                    
-        # reindex edges
-        src = [self.g2m_node_subset.index(i) for i in src_subset]
-        dst = dst_subset
-        
-        # subsets of features
-        cartesian_grid = cartesian_grid[self.local2global_idxs]
-        mesh_node_features = [self.icospheres["order_" + str(self.max_order) + "_vertices"][i] for i in self.g2m_node_subset]
-        
+        _, indices = neighbors.kneighbors(cartesian_grid)
+        indices = indices.flatten()
+
+        src = [
+            p
+            for i in indices
+            for p in self.icospheres["order_" + str(self.max_order) + "_faces"][i]
+        ] # (lat*lon, 3)
+        dst = [i for i in range(len(cartesian_grid)) for _ in range(3)]
         m2g_graph = create_heterograph(
             src, dst, ("mesh", "m2g", "grid"), dtype=torch.int32
         )  # number of edges is 3,114,720, exactly matches with the paper
         m2g_graph.srcdata["pos"] = torch.tensor(
-            mesh_node_features,
+            self.icospheres["order_" + str(self.max_order) + "_vertices"],
             dtype=torch.float32,
         )
         m2g_graph.dstdata["pos"] = cartesian_grid.to(dtype=torch.float32)
@@ -283,9 +231,10 @@ class Graph:
 
         if verbose:
             print("m2g graph:", m2g_graph)
+        
         return m2g_graph
     
-    def create_mesh_graph(self, verbose: bool = True, debug: bool = False) -> Tensor:
+    def create_mesh_graph(self, verbose: bool = True, debug=True) -> Tensor:
         """Create the multimesh graph.
 
         Parameters
@@ -299,109 +248,39 @@ class Graph:
             Multimesh graph.
         """
         # create the bi-directional mesh graph
-        multimesh_faces = self.icospheres["order_0_faces"]
-        for i in range(1, self.max_order + 1):
-            multimesh_faces = np.concatenate(
-                (multimesh_faces, self.icospheres["order_" + str(i) + "_faces"])
-            )
+        multimesh_faces = self.icospheres[f"order_{self.max_order}_faces"]
+        # multimesh_faces = self.icospheres["order_0_faces"]
+        # for i in range(1, self.max_order + 1):
+        #     multimesh_faces = np.concatenate(
+        #         (multimesh_faces, self.icospheres["order_" + str(i) + "_faces"])
+        #     )
 
         src, dst = cell_to_adj(multimesh_faces)
-        # edge subset
-        src_subset, dst_subset = [], []
-        for i in range(len(src)):
-            if src[i] in self.g2m_node_subset_set and dst[i] in self.g2m_node_subset_set:
-                src_subset.append(src[i])
-                dst_subset.append(dst[i])
-        src = [self.g2m_node_subset.index(i) for i in src_subset]
-        dst = [self.g2m_node_subset.index(i) for i in dst_subset]
-        # node subset
-        mesh_features = [self.icospheres["order_" + str(self.max_order) + "_vertices"][i] for i in self.g2m_node_subset]
         mesh_graph = create_graph(
             src, dst, to_bidirected=True, add_self_loop=False, dtype=torch.int32
         )
         mesh_pos = torch.tensor(
-            mesh_features,
+            self.icospheres["order_" + str(self.max_order) + "_vertices"],
             dtype=torch.float32,
-        ) # (n_nodes, 3)
+        )
         mesh_graph = add_edge_features(mesh_graph, mesh_pos)
         mesh_graph = add_node_features(mesh_graph, mesh_pos)
         # ensure fields set to dtype to avoid later conversions
         mesh_graph.ndata["x"] = mesh_graph.ndata["x"].to(dtype=self.dtype)
         mesh_graph.edata["x"] = mesh_graph.edata["x"].to(dtype=self.dtype)
+        
         if verbose:
             print("mesh graph:", mesh_graph)
+        
         if debug:
-            mesh_pos = xyz2latlon(mesh_pos).to(dtype=self.dtype)    
-            mesh_pos = mesh_pos[:, [1,0]] # swap lat/lon to lon/lat
+            mesh_pos = xyz2latlon(mesh_pos).to(dtype=self.dtype)
+            mesh_pos = mesh_pos[:, [1, 0]]
             return mesh_graph, mesh_pos
+        
         return mesh_graph
-    
-    def find_subset_graphs(self, verbose: bool = True):
-        # ===== Get G2M Mesh Subset ===== #
-        # get the max edge length of icosphere with max order
-        edge_src = self.icospheres["order_" + str(self.max_order) + "_vertices"][
-            self.icospheres["order_" + str(self.max_order) + "_faces"][:, 0]
-        ]
-        edge_dst = self.icospheres["order_" + str(self.max_order) + "_vertices"][
-            self.icospheres["order_" + str(self.max_order) + "_faces"][:, 1]
-        ]
-        edge_len_1 = np.max(get_edge_len(edge_src, edge_dst))
-        edge_src = self.icospheres["order_" + str(self.max_order) + "_vertices"][
-            self.icospheres["order_" + str(self.max_order) + "_faces"][:, 0]
-        ]
-        edge_dst = self.icospheres["order_" + str(self.max_order) + "_vertices"][
-            self.icospheres["order_" + str(self.max_order) + "_faces"][:, 2]
-        ]
-        edge_len_2 = np.max(get_edge_len(edge_src, edge_dst))
-        edge_src = self.icospheres["order_" + str(self.max_order) + "_vertices"][
-            self.icospheres["order_" + str(self.max_order) + "_faces"][:, 1]
-        ]
-        edge_dst = self.icospheres["order_" + str(self.max_order) + "_vertices"][
-            self.icospheres["order_" + str(self.max_order) + "_faces"][:, 2]
-        ]
-        edge_len_3 = np.max(get_edge_len(edge_src, edge_dst))
-        edge_len = max([edge_len_1, edge_len_2, edge_len_3])
 
-        # create the grid2mesh bipartite graph
-        cartesian_grid = latlon2xyz(self.lat_lon_grid_flat) # (lat*lon, 3)
-        n_nbrs = 4
-        neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(
-            self.icospheres["order_" + str(self.max_order) + "_vertices"] # (40962, 3)
-        )
-        distances, indices = neighbors.kneighbors(cartesian_grid) # (lat*lon, n_nbrs)
-        
-        src, dst = [], []
-        for i in range(len(cartesian_grid)):
-            for j in range(n_nbrs):
-                if distances[i][j] <= 0.6 * edge_len:
-                    src.append(i)
-                    dst.append(indices[i][j])
-                    # NOTE this gives 1,624,344 edges, in the paper it is 1,618,746
-                    # this number is very sensitive to the chosen edge_len, not clear
-                    # in the paper what they use.
-        
-        g2m_mesh_subset = [dst[i] for i in range(len(src)) if src[i] in self.local2global_idxs]
-        
-        # ===== Get M2G Mesh Subset ===== #
-        # create the mesh2grid bipartite graph
-        cartesian_grid = latlon2xyz(self.lat_lon_grid_flat)
-        n_nbrs = 1
-        neighbors = NearestNeighbors(n_neighbors=n_nbrs).fit(
-            self.icospheres["order_" + str(self.max_order) + "_face_centroid"]
-        )
-        _, indices = neighbors.kneighbors(cartesian_grid) # find the closest face centroid for each grid point (lat*lon, 1)
-        mesh_indices = indices.flatten() # (lat*lon,)
-        
-        m2g_mesh_subset = [
-            p
-            for i in indices[self.local2global_idxs]
-            for p in self.icospheres["order_" + str(self.max_order) + "_faces"][i]
-        ]
-        dst_subset = [i for i in self.local2global_idxs for _ in range(3)]
-        pass
-    
-def create_graphcast_mesh(args):
-    print("Creating GraphCast Graphs")
+def create_graphcast_global(args):
+    print("Creating Global GraphCast Graphs")
     print(f"Max order: {args.max_order}")
     graph_dir_path = os.path.join("graphs", args.graph)
     os.makedirs(graph_dir_path, exist_ok=True)
@@ -414,15 +293,15 @@ def create_graphcast_mesh(args):
     print(f"Local area shape: {local_lat_lon_grid.shape}")
     print(f"Opened lat lon grid at {nwp_xy_path}.")
     
-    input_res = (721, 1440) # (lat, lon)
-    latitudes = torch.linspace(-90, 90, steps=input_res[0])
-    longitudes = torch.linspace(-180, 180, steps=input_res[1] + 1)[1:]
-    lat_lon_grid = torch.stack(
-        torch.meshgrid(longitudes, latitudes, indexing="ij"), dim=0
-    ) # (2, lon, lat)
-    print(f"Global area shape: {lat_lon_grid.shape}")
+    # input_res = (721, 1440) # (lat, lon)
+    # latitudes = torch.linspace(-90, 90, steps=input_res[0])
+    # longitudes = torch.linspace(-180, 180, steps=input_res[1] + 1)[1:]
+    # lat_lon_grid = torch.stack(
+    #     torch.meshgrid(longitudes, latitudes, indexing="ij"), dim=0
+    # ) # (2, lon, lat)
+    # print(f"Global area shape: {lat_lon_grid.shape}")
 
-    graph = Graph(icosophere_path, lat_lon_grid, local_lat_lon_grid, max_order=args.max_order)
+    graph = Graph(icosophere_path, local_lat_lon_grid, max_order=args.max_order)
         
     # Must be run in the following order: G2M, M2G, Mesh
     # ----- Grid2Mesh Graph ----- #
