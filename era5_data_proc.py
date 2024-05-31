@@ -74,7 +74,7 @@ def proc_file(data, proccessed_dataset_path, subset=None):
         time = data['time'].values[i]
         sample = data.sel(time=time)
         array = sample.to_array().values # (N_vars, N_levels, N_lat, N_lon)
-        array = array.transpose(3,2,0,1) # (N_lon, N_lat, N_vars, N_levels)
+        array = array.transpose(2,3,0,1) # (N_lat, N_lon, N_vars, N_levels)
         N_lon, N_lat = array.shape[0], array.shape[1]
         array = array.reshape(N_lon*N_lat, -1) # (N_lon*N_lat, N_vars*N_levels)
                 
@@ -102,7 +102,7 @@ def save_dataset_samples(dataset, subset=None):
     for j, filepath in enumerate(nc_files):
         data = xr.open_dataset(filepath)
         proc_file(data, proccessed_dataset_path, subset=subset)
-        
+    
     # Validation Files
     for month in ERA5UKConstants.VAL_MONTHS:
         filepath = f'{RAW_ERA5_PATH}/2023_{month}.nc'
@@ -130,14 +130,14 @@ def create_xy(dataset, subset=None):
     longitudes = np.where(longitudes > 180, longitudes - 360, longitudes)
     latitudes = data.latitude.values
 
-    t_lon = torch.from_numpy(longitudes)
     t_lat = torch.from_numpy(latitudes)
+    t_lon = torch.from_numpy(longitudes)
 
-    lon_lat_grid = torch.stack(
-        torch.meshgrid(t_lon, t_lat, indexing="ij"), dim=0
-    ) # (2, lon, lat) or (2, x, y)
+    lat_grid, lon_grid = torch.meshgrid(t_lat, t_lon, indexing="ij") # both (lat, lon) / (y, x)
+    grid_array = torch.stack(
+        (lon_grid, lat_grid),
+    ).numpy() # (2, y, x)
 
-    grid_array = lon_lat_grid.numpy()
     np.save(os.path.join(proccessed_dataset_path, "nwp_xy.npy"), grid_array)
     
     # Create border mask (is all zero for ERA5 dataset since there is no border)
@@ -161,14 +161,14 @@ def _create_xy(data, dataset, subset=None):
     longitudes = np.where(longitudes > 180, longitudes - 360, longitudes)
     latitudes = data.latitude.values
 
-    t_lon = torch.from_numpy(longitudes)
     t_lat = torch.from_numpy(latitudes)
+    t_lon = torch.from_numpy(longitudes)
 
-    lon_lat_grid = torch.stack(
-        torch.meshgrid(t_lon, t_lat, indexing="ij"), dim=0
-    ) # (2, lon, lat) or (2, x, y)
-
-    grid_array = lon_lat_grid.numpy()
+    lat_grid, lon_grid = torch.meshgrid(t_lat, t_lon, indexing="ij") # both (lat, lon) / (y, x)
+    grid_array = torch.stack(
+        (lon_grid, lat_grid),
+    ).numpy() # (2, y, x)
+    
     np.save(os.path.join(proccessed_dataset_path, "nwp_xy.npy"), grid_array)
     
     # Create border mask (is all zero for ERA5 dataset since there is no border)
@@ -217,19 +217,18 @@ def make_global_dataset():
     _create_xy(data, name)
 
 if __name__ == "__main__":
-    make_global_dataset()
+    # make_global_dataset()
+    name = "new_era5_uk"
+    subset = uk_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)
     
-    # name = "era5_uk"
-    # subset = uk_subset
-    # save_dataset_samples(name, subset=subset)
-    # create_xy(name, subset=subset)
+    name = "new_era5_uk_big"
+    subset = uk_big_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)
     
-    # name = "era5_uk_big"
-    # subset = uk_big_subset
-    # save_dataset_samples(name, subset=subset)
-    # create_xy(name, subset=subset)
-    
-    # name = "era5_uk_small"
-    # subset = uk_small_subset
-    # save_dataset_samples(name, subset=subset)
-    # create_xy(name, subset=subset)
+    name = "new_era5_uk_small"
+    subset = uk_small_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)

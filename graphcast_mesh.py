@@ -108,6 +108,17 @@ class Graph:
         print(f"Local grid shape: {self.local_lat_lon_grid_flat.shape}")
         self.local2global_idxs = find_subset_indices(self.lat_lon_grid_flat, self.local_lat_lon_grid_flat) # (local_lat*local_lon,)
         self.local2global_idxs_set = set(self.local2global_idxs)
+        
+        self.NODES_PER_LEVEL = [
+            icospheres[f"order_{order}_vertices"].shape[0] 
+            for order in range(self.max_order + 1)
+        ]
+        
+    def get_node_level(self, node_idx):
+        for order, max_node_idx in enumerate(self.NODES_PER_LEVEL):
+            if node_idx < max_node_idx:
+                return order
+        return 6
 
     def create_g2m_graph(self, verbose: bool = True) -> Tensor:
         """Create the graph2mesh graph.
@@ -173,7 +184,7 @@ class Graph:
         # for each grid node, add the corresponding mesh node to the subset, if it is in the local grid
         dst_subset = [dst[i] for i in range(len(src)) if src[i] in self.local2global_idxs_set]
         
-        # subset of mesh nodes
+        # subset of mesh nodes (indices wrt full mesh)
         self.g2m_node_subset = sorted(list(set(dst_subset)))
         self.g2m_node_subset_set = set(dst_subset)
         
@@ -314,6 +325,18 @@ class Graph:
                 dst_subset.append(dst[i])
         src = [self.g2m_node_subset.index(i) for i in src_subset]
         dst = [self.g2m_node_subset.index(i) for i in dst_subset]
+        
+        mesh_node_levels = [self.get_node_level(i) for i in self.g2m_node_subset]
+        min_level, max_level = min(mesh_node_levels), max(mesh_node_levels)
+        mesh_edge_levels = {}
+        for u, v in zip(src_subset, dst_subset):
+            u_level, v_level = self.get_node_level(u), self.get_node_level(v)
+            if u_level == v_level:
+                if u_level not in mesh_edge_levels:
+                    mesh_edge_levels[u_level] = ([], [])
+                mesh_edge_levels[u_level][0].append(u)
+                mesh_edge_levels[u_level][1].append(v)        
+        
         # node subset
         mesh_features = [self.icospheres["order_" + str(self.max_order) + "_vertices"][i] for i in self.g2m_node_subset]
         mesh_graph = create_graph(
@@ -333,7 +356,7 @@ class Graph:
         if debug:
             mesh_pos = xyz2latlon(mesh_pos).to(dtype=self.dtype)    
             mesh_pos = mesh_pos[:, [1,0]] # swap lat/lon to lon/lat
-            return mesh_graph, mesh_pos
+            return mesh_graph, mesh_pos, mesh_node_levels
         return mesh_graph
     
     def find_subset_graphs(self, verbose: bool = True):
@@ -410,16 +433,18 @@ def create_graphcast_mesh(args):
     icosophere_path = os.path.join(data_dir_path, "icospheres.json")
 
     nwp_xy_path = os.path.join(data_dir_path, "static", "nwp_xy.npy")
-    local_lat_lon_grid = torch.from_numpy(np.load(nwp_xy_path)) # (2, lon, lat) or (2, x, y)
+    local_lat_lon_grid = torch.from_numpy(np.load(nwp_xy_path)) # (2, lat, lon) or (2, y, x)
     print(f"Local area shape: {local_lat_lon_grid.shape}")
     print(f"Opened lat lon grid at {nwp_xy_path}.")
     
     input_res = (721, 1440) # (lat, lon)
     latitudes = torch.linspace(-90, 90, steps=input_res[0])
     longitudes = torch.linspace(-180, 180, steps=input_res[1] + 1)[1:]
-    lat_lon_grid = torch.stack(
-        torch.meshgrid(longitudes, latitudes, indexing="ij"), dim=0
-    ) # (2, lon, lat)
+    lats, lons = torch.stack(
+        torch.meshgrid(latitudes, longitudes, indexing="ij"), dim=0
+    ) # both (lat, lon) / (y, x)
+    lat_lon_grid = torch.stack((lons, lats)) # (2, lat, lon)
+    # latitude value comes first here unlike the rest of the repo
     print(f"Global area shape: {lat_lon_grid.shape}")
 
     graph = Graph(icosophere_path, lat_lon_grid, local_lat_lon_grid, max_order=args.max_order)
@@ -444,7 +469,7 @@ def create_graphcast_mesh(args):
                os.path.join(graph_dir_path, f"m2g_features.pt"))
     
     # ----- Mesh Graph ----- #
-    mesh_graph, mesh_pos = graph.create_mesh_graph(debug=True)
+    mesh_graph, mesh_pos, mesh_node_levels = graph.create_mesh_graph(debug=True)
     src, dst = mesh_graph.edges()
     m2m_edge_index = torch.stack((src, dst)).to(torch.int64)
     torch.save([m2m_edge_index], 
@@ -454,5 +479,8 @@ def create_graphcast_mesh(args):
     torch.save([mesh_graph.ndata["x"]], 
                os.path.join(graph_dir_path, f"mesh_features.pt"))
     
+    # for debug
     torch.save(mesh_pos, 
                os.path.join(graph_dir_path, f"mesh_pos.pt"))
+    torch.save(mesh_node_levels, 
+               os.path.join(graph_dir_path, f"mesh_node_levels.pt"))

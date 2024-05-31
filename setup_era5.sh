@@ -22,10 +22,20 @@ python create_parameter_weights.py --dataset era5_uk
 # ======= UK small =======
 
 # ======= UK global =======
-python era5_data_proc.py
+# python era5_data_proc.py
 
-python create_mesh.py --dataset era5_global --graph global_graphcast --max_order 2
+# python create_mesh.py --dataset era5_global --graph global_graphcast --max_order 2
 
-python create_grid_features.py --dataset era5_global
+# python create_grid_features.py --dataset era5_global
 
-python create_parameter_weights.py --dataset era5_global
+# python create_parameter_weights.py --dataset era5_global
+
+# ======= UK new =======
+
+# python era5_data_proc.py
+
+python create_mesh.py --dataset era5_uk --graph uk_ico
+
+python create_grid_features.py --dataset new_era5_uk
+
+python create_parameter_weights.py --dataset new_era5_uk

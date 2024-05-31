@@ -35,8 +35,8 @@ def era5_static_features(grid_xy, dataset):
             subset = uk_big_subset
         static_data = subset(static_data)
         
-    static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_x, N_y)
-    static_data = static_data.transpose(2, 1, 0).reshape(grid_xy.shape[0], -1) # (N_x * N_y, N_var)
+    static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_y, N_x)
+    static_data = static_data.transpose(1, 2, 0).reshape(grid_xy.shape[0], -1) # (N_y * N_x, N_var)
     return static_data
 
 def create_era5_grid_features(args, static_dir_path):
@@ -46,9 +46,9 @@ def create_era5_grid_features(args, static_dir_path):
     # -- Static grid node features --
     grid_xy = torch.tensor(
         np.load(os.path.join(static_dir_path, "nwp_xy.npy"))
-    )  # (2, N_x, N_y)
+    )  # (2, N_y, N_x)
     
-    grid_xy = grid_xy.reshape(2, -1).T # (N_x * N_y, 2)
+    grid_xy = grid_xy.reshape(2, -1).T # (N_y * N_x, 2)
     grid_xy = np.radians(grid_xy)
     grid_lons = grid_xy[:, 0]
     grid_lats = grid_xy[:, 1]

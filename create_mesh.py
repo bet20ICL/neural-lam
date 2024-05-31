@@ -78,6 +78,11 @@ def sort_nodes_internally(nx_graph):
 
 
 def save_edges(graph, name, base_path):
+    """
+    graph: save the edges of this networkx graph
+    name: name of the file
+    base_path: path to save the file
+    """
     torch.save(
         graph.edge_index, os.path.join(base_path, f"{name}_edge_index.pt")
     )
@@ -108,12 +113,24 @@ def from_networkx_with_start_index(nx_graph, start_index):
 
 
 def mk_2d_graph(xy, nx, ny):
+    """
+    xy: 3D array of shape (2, Nx, Ny)
+    [x, y] = xy
+    
+    nx, ny: number of nodes in x and y direction
+    
+    returns: directed graph with edges between neighbouring nodes in grid
+    """
+    # min and max values of x and y coordinates
     xm, xM = np.amin(xy[0][0, :]), np.amax(xy[0][0, :])
     ym, yM = np.amin(xy[1][:, 0]), np.amax(xy[1][:, 0])
 
-    # avoid nodes on border
+    # spacing between nodes
     dx = (xM - xm) / nx
     dy = (yM - ym) / ny
+    
+    # make mesh nodes
+    # +/- dx/dy to avoid making nodes on border
     lx = np.linspace(xm + dx / 2, xM - dx / 2, nx)
     ly = np.linspace(ym + dy / 2, yM - dy / 2, ny)
 
@@ -123,19 +140,27 @@ def mk_2d_graph(xy, nx, ny):
     for node in g.nodes:
         g.nodes[node]["pos"] = np.array([mg[0][node], mg[1][node]])
 
+    se_edges = [
+        ((x, y), (x + 1, y + 1))
+        for x in range(nx - 1)
+        for y in range(ny - 1)
+    ] # top left to bottom right
+    
+    sw_edges = [
+        ((x + 1, y), (x, y + 1))
+        for x in range(nx - 1)
+        for y in range(ny - 1)
+    ] # top right to bottom left edges
+    
     # add diagonal edges
     g.add_edges_from(
-        [((x, y), (x + 1, y + 1)) for x in range(nx - 1) for y in range(ny - 1)]
-        + [
-            ((x + 1, y), (x, y + 1))
-            for x in range(nx - 1)
-            for y in range(ny - 1)
-        ]
+        se_edges + sw_edges
     )
 
     # turn into directed graph
     dg = networkx.DiGraph(g)
     for u, v in g.edges():
+        # euclidean distance between nodes of edge
         d = np.sqrt(np.sum((g.nodes[u]["pos"] - g.nodes[v]["pos"]) ** 2))
         dg.edges[u, v]["len"] = d
         dg.edges[u, v]["vdiff"] = g.nodes[u]["pos"] - g.nodes[v]["pos"]
@@ -192,6 +217,12 @@ def get_args():
         default=None,
         help="Maximum order of the mesh graph (default: 2)",
     )
+    parser.add_argument(
+        "--ico_mesh",
+        type=int,
+        default=1,
+        help="Use icosahedron mesh instead of grid mesh (default: 1, yes)",
+    )
     args = parser.parse_args()
     return args
 
@@ -204,9 +235,10 @@ def main():
         if "global" in args.dataset:
             create_graphcast_global(args)
             return
-            
-        create_graphcast_mesh(args)
-        return
+        
+        if args.ico_mesh:
+            create_graphcast_mesh(args)
+            return
     
     # Load grid positions
     static_dir_path = os.path.join("data", args.dataset, "static")
@@ -240,7 +272,8 @@ def main():
         n = int(nleaf / (nx**lev))
         g = mk_2d_graph(xy, n, n)
         if args.plot:
-            plot_graph(from_networkx(g), title=f"Mesh graph, level {lev}")
+            fig, axis = plot_graph(from_networkx(g), title=f"Mesh graph, level {lev}")
+            plt.savefig(f'mesh_graph_level_{lev}.png', dpi=300)
             plt.show()
 
         G.append(g)
@@ -391,6 +424,11 @@ def main():
     # Save m2m edges
     save_edges_list(m2m_graphs, "m2m", graph_dir_path)
 
+
+    torch.save(
+        mesh_pos, os.path.join(graph_dir_path, "mesh_pos.pt")
+    )  # mesh pos, in float32
+    
     # Divide mesh node pos by max coordinate of grid cell
     mesh_pos = [pos / pos_max for pos in mesh_pos]
 
@@ -409,7 +447,7 @@ def main():
 
     # mesh nodes on lowest level
     vm = G_bottom_mesh.nodes
-    vm_xy = np.array([xy for _, xy in vm.data("pos")])
+    vm_xy = np.array([xy for _, xy in vm.data("pos")]) # (N_grid, 2)
     # distance between mesh nodes
     dm = np.sqrt(
         np.sum((vm.data("pos")[(0, 1, 0)] - vm.data("pos")[(0, 0, 0)]) ** 2)
@@ -433,7 +471,7 @@ def main():
     # build kd tree for grid point pos
     # order in vg_list should be same as in vg_xy
     vg_list = list(G_grid.nodes)
-    vg_xy = np.array([[xy[0][node[1:]], xy[1][node[1:]]] for node in vg_list])
+    vg_xy = np.array([[xy[0][node[1:]], xy[1][node[1:]]] for node in vg_list]) # (N_mesh, 2)
     kdt_g = scipy.spatial.KDTree(vg_xy)
 
     # now add (all) mesh nodes, include features (pos)
