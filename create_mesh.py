@@ -13,7 +13,6 @@ import torch_geometric as pyg
 from torch_geometric.utils.convert import from_networkx
 
 # First-party
-from graphcast_mesh import create_graphcast_mesh
 from graphcast_global import create_graphcast_global
 
 def plot_graph(graph, title=None):
@@ -245,7 +244,6 @@ def main(args=None):
         
         if args.ico_mesh:
             create_graphcast_global(args)
-            # create_graphcast_mesh(args)
             return
     
     # Load grid positions

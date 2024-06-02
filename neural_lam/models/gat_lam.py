@@ -1,7 +1,7 @@
 # Third-party
 import torch_geometric as pyg
-import torch
 from torch_geometric.nn import GAT
+import torch
 from torch import nn
 
 # First-party
