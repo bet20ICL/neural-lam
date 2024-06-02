@@ -94,7 +94,7 @@ class Graph:
         self.icospheres = icospheres
         self.max_order = (
             len([key for key in self.icospheres.keys() if "faces" in key]) - 2
-        )
+        ) if max_order is None else max_order
 
         # flatten lat/lon grid
         self.lat_lon_grid_flat = lat_lon_grid.reshape(2, -1).T # (lat*lon, 2)
@@ -181,7 +181,7 @@ class Graph:
         # get edges in subgraph
         # add grid node to subset if it is in the local grid
         src_subset = [s for s in src if s in self.local2global_idxs_set]
-        # for each grid node, add the corresponding mesh node to the subset, if it is in the local grid
+        # for each grid node, if it is in the local grid, add the corresponding mesh node to the subset, 
         dst_subset = [dst[i] for i in range(len(src)) if src[i] in self.local2global_idxs_set]
         
         # subset of mesh nodes (indices wrt full mesh)
@@ -253,7 +253,7 @@ class Graph:
         # ]
         # dst_subset = [i for i in self.local2global_idxs for _ in range(3)]
         src_subset, dst_subset = [], []
-        # for each grid node and corresponding mesh face
+        # for each grid node its corresponding mesh face
         for grid_idx, mesh_idx in enumerate(indices[self.local2global_idxs]):
             # for each of the three vertices of the face
             for p in self.icospheres["order_" + str(self.max_order) + "_faces"][mesh_idx]:

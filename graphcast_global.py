@@ -95,9 +95,21 @@ class Graph:
         ) if max_order is None else max_order
 
         # flatten lat/lon gird
-        self.lat_lon_grid_flat = lat_lon_grid.reshape(2, -1).T
+        self.lat_lon_grid_flat = lat_lon_grid.reshape(2, -1).T # (lat*lon, 2)
+        
         # Swap lon/lat to lat/lon
         self.lat_lon_grid_flat = self.lat_lon_grid_flat[:, [1,0]]
+        
+        self.NODES_PER_LEVEL = [
+            icospheres[f"order_{order}_vertices"].shape[0] 
+            for order in range(self.max_order + 1)
+        ]
+        
+    def get_node_level(self, node_idx):
+        for order, max_node_idx in enumerate(self.NODES_PER_LEVEL):
+            if node_idx < max_node_idx:
+                return order
+        return 6
         
     def create_g2m_graph(self, verbose: bool = True) -> Tensor:
         """Create the graph2mesh graph.
@@ -154,12 +166,23 @@ class Graph:
                     # this number is very sensitive to the chosen edge_len, not clear
                     # in the paper what they use.
 
+        # subset of mesh nodes (indices wrt full mesh)
+        self.g2m_node_subset = sorted(list(set(dst)))
+        self.g2m_node_subset_set = set(dst)
+        
+        # re-index the src and dst to match the new node indices
+        # # src: indices of grid nodes in subgrid
+        # src = [self.local2global_idxs.index(i) for i in src_subset]
+        # dst: indices of mesh nodes in submesh
+        dst = [self.g2m_node_subset.index(i) for i in dst]
+        mesh_node_features = [self.icospheres["order_" + str(self.max_order) + "_vertices"][i] for i in self.g2m_node_subset]
+        
         g2m_graph = create_heterograph(
             src, dst, ("grid", "g2m", "mesh"), dtype=torch.int32
         )  # number of edges is 3,114,720, exactly matches with the paper
         g2m_graph.srcdata["pos"] = cartesian_grid.to(torch.float32)
         g2m_graph.dstdata["pos"] = torch.tensor(
-            self.icospheres["order_" + str(self.max_order) + "_vertices"],
+            mesh_node_features,
             dtype=torch.float32,
         )
         g2m_graph = add_edge_features(
@@ -201,17 +224,22 @@ class Graph:
         _, indices = neighbors.kneighbors(cartesian_grid)
         indices = indices.flatten()
 
-        src = [
-            p
-            for i in indices
-            for p in self.icospheres["order_" + str(self.max_order) + "_faces"][i]
-        ] # (lat*lon, 3)
-        dst = [i for i in range(len(cartesian_grid)) for _ in range(3)]
+        src_subset, dst_subset = [], []
+        for grid_idx, face_idx in enumerate(indices):
+            for p in self.icospheres["order_" + str(self.max_order) + "_faces"][face_idx]:
+                if p in self.g2m_node_subset_set:
+                    src_subset.append(
+                        self.g2m_node_subset.index(p)
+                    )
+                    dst_subset.append(grid_idx)
+        src, dst = src_subset, dst_subset
+        
+        mesh_node_features = [self.icospheres["order_" + str(self.max_order) + "_vertices"][i] for i in self.g2m_node_subset]
         m2g_graph = create_heterograph(
             src, dst, ("mesh", "m2g", "grid"), dtype=torch.int32
         )  # number of edges is 3,114,720, exactly matches with the paper
         m2g_graph.srcdata["pos"] = torch.tensor(
-            self.icospheres["order_" + str(self.max_order) + "_vertices"],
+            mesh_node_features,
             dtype=torch.float32,
         )
         m2g_graph.dstdata["pos"] = cartesian_grid.to(dtype=torch.float32)
@@ -248,19 +276,32 @@ class Graph:
             Multimesh graph.
         """
         # create the bi-directional mesh graph
-        multimesh_faces = self.icospheres[f"order_{self.max_order}_faces"]
-        # multimesh_faces = self.icospheres["order_0_faces"]
-        # for i in range(1, self.max_order + 1):
-        #     multimesh_faces = np.concatenate(
-        #         (multimesh_faces, self.icospheres["order_" + str(i) + "_faces"])
-        #     )
+        # multimesh_faces = self.icospheres[f"order_{self.max_order}_faces"]
+        multimesh_faces = self.icospheres["order_0_faces"]
+        for i in range(1, self.max_order + 1):
+            multimesh_faces = np.concatenate(
+                (multimesh_faces, self.icospheres["order_" + str(i) + "_faces"])
+            )
 
         src, dst = cell_to_adj(multimesh_faces)
+        src_subset, dst_subset = [], []
+        for u, v in zip(src, dst):
+            if u in self.g2m_node_subset_set and v in self.g2m_node_subset_set:
+                src_subset.append(
+                    self.g2m_node_subset.index(u)
+                )
+                dst_subset.append(
+                    self.g2m_node_subset.index(v)
+                )
+        src, dst = src_subset, dst_subset
+        
+        mesh_node_levels = [self.get_node_level(i) for i in self.g2m_node_subset]
+        mesh_features = [self.icospheres["order_" + str(self.max_order) + "_vertices"][i] for i in self.g2m_node_subset]
         mesh_graph = create_graph(
             src, dst, to_bidirected=True, add_self_loop=False, dtype=torch.int32
         )
         mesh_pos = torch.tensor(
-            self.icospheres["order_" + str(self.max_order) + "_vertices"],
+            mesh_features,
             dtype=torch.float32,
         )
         mesh_graph = add_edge_features(mesh_graph, mesh_pos)
@@ -275,7 +316,8 @@ class Graph:
         if debug:
             mesh_pos = xyz2latlon(mesh_pos).to(dtype=self.dtype)
             mesh_pos = mesh_pos[:, [1, 0]]
-            return mesh_graph, mesh_pos
+            mesh_uids = self.g2m_node_subset
+            return mesh_graph, mesh_pos, mesh_node_levels, mesh_uids
         
         return mesh_graph
 
@@ -286,20 +328,12 @@ def create_graphcast_global(args):
     os.makedirs(graph_dir_path, exist_ok=True)
     
     data_dir_path = os.path.join("data", args.dataset)
-    icosophere_path = os.path.join(data_dir_path, "icospheres.json")
+    icosophere_path = "icospheres.json"
 
     nwp_xy_path = os.path.join(data_dir_path, "static", "nwp_xy.npy")
     local_lat_lon_grid = torch.from_numpy(np.load(nwp_xy_path)) # (2, lon, lat) or (2, x, y)
     print(f"Local area shape: {local_lat_lon_grid.shape}")
     print(f"Opened lat lon grid at {nwp_xy_path}.")
-    
-    # input_res = (721, 1440) # (lat, lon)
-    # latitudes = torch.linspace(-90, 90, steps=input_res[0])
-    # longitudes = torch.linspace(-180, 180, steps=input_res[1] + 1)[1:]
-    # lat_lon_grid = torch.stack(
-    #     torch.meshgrid(longitudes, latitudes, indexing="ij"), dim=0
-    # ) # (2, lon, lat)
-    # print(f"Global area shape: {lat_lon_grid.shape}")
 
     graph = Graph(icosophere_path, local_lat_lon_grid, max_order=args.max_order)
         
@@ -323,7 +357,7 @@ def create_graphcast_global(args):
                os.path.join(graph_dir_path, f"m2g_features.pt"))
     
     # ----- Mesh Graph ----- #
-    mesh_graph, mesh_pos = graph.create_mesh_graph(debug=True)
+    mesh_graph, mesh_pos, mesh_node_levels, mesh_uids = graph.create_mesh_graph(debug=True)
     src, dst = mesh_graph.edges()
     m2m_edge_index = torch.stack((src, dst)).to(torch.int64)
     torch.save([m2m_edge_index], 
@@ -333,5 +367,10 @@ def create_graphcast_global(args):
     torch.save([mesh_graph.ndata["x"]], 
                os.path.join(graph_dir_path, f"mesh_features.pt"))
     
+    # For debugging
     torch.save(mesh_pos, 
                os.path.join(graph_dir_path, f"mesh_pos.pt"))
+    torch.save(mesh_node_levels, 
+               os.path.join(graph_dir_path, f"mesh_node_levels.pt"))
+    torch.save(mesh_uids,
+               os.path.join(graph_dir_path, f"mesh_uids.pt"))

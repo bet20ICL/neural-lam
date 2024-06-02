@@ -177,8 +177,8 @@ def prepend_node_index(graph, new_index):
     to_mapping = dict(zip(graph.nodes, ijk))
     return networkx.relabel_nodes(graph, to_mapping, copy=True)
 
-def get_args():
-    parser = ArgumentParser(description="Graph generation arguments")
+def get_args(args=None):
+    parser = ArgumentParser(description="Graph generation arguments") 
     parser.add_argument(
         "--dataset",
         type=str,
@@ -215,7 +215,7 @@ def get_args():
         "--max_order",
         type=int,
         default=None,
-        help="Maximum order of the mesh graph (default: 2)",
+        help="Maximum order of the mesh graph (default: None, no limit)",
     )
     parser.add_argument(
         "--ico_mesh",
@@ -223,21 +223,29 @@ def get_args():
         default=1,
         help="Use icosahedron mesh instead of grid mesh (default: 1, yes)",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--multiscale",
+        type=int,
+        default=1,
+        help="Add multiscale edges (default: 1, yes)",
+    )
+    
+    # If args are passed, parse them and return
+    if args:
+        args = parser.parse_args(args)
+    else:
+        args = parser.parse_args()
     return args
 
-def main():
-    args = get_args()
+def main(args=None):
+    args = get_args(args)
     
     if "era5" in args.dataset:
         print("Creating graph for ERA5 dataset")
         
-        if "global" in args.dataset:
-            create_graphcast_global(args)
-            return
-        
         if args.ico_mesh:
-            create_graphcast_mesh(args)
+            create_graphcast_global(args)
+            # create_graphcast_mesh(args)
             return
     
     # Load grid positions
@@ -554,4 +562,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    args = ["--dataset", "meps_example"]
+    main(args)
