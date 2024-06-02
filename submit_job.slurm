@@ -34,6 +34,24 @@ which python
 # srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 4 --simple_grid 0 --no_forcing 1 --simple_param_weights 1
 # srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 4 --simple_grid 1 --no_forcing 0 --simple_param_weights 1
 # srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 4 --simple_grid 1 --no_forcing 1 --simple_param_weights 0
-srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 16 --simple_grid 0 --no_forcing 0 --simple_param_weights 0
+# srun python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 16 --simple_grid 0 --no_forcing 0 --simple_param_weights 0
 # srun python train_model.py --model gcn_lam --dataset era5_uk --graph uk_graphcast --batch_size 16 --simple_grid 0 --no_forcing 0 --simple_param_weights 0
 # srun python train_model.py --model gat_lam --dataset era5_uk --graph uk_graphcast --batch_size 8 --simple_grid 0 --no_forcing 0 --simple_param_weights 0
+
+# 5705571
+# python train_model.py --model graph_lam --dataset era5_uk --graph uk_ico --batch_size 8
+
+# 5705588
+# python train_model.py --model graph_lam --dataset era5_uk_small --graph uk_small_ico --batch_size 8
+
+# 5705590
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8
+
+# 5705962
+# python train_model.py --model graph_lam --dataset era5_uk --graph uk_ico --batch_size 8
+
+# 5705963
+# python train_model.py --model graph_lam --dataset era5_uk_small --graph uk_small_ico --batch_size 8
+
+# 5705964
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8

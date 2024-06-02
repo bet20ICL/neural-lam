@@ -560,6 +560,4 @@ def main(args=None):
 
 
 if __name__ == "__main__":
-    # main()
-    args = ["--dataset", "meps_example"]
-    main(args)
+    main()
