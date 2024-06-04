@@ -252,6 +252,10 @@ def main():
     """
     args = get_args()
 
+    # Get an (actual) random run id as a unique identifier
+    # This needs to run before seed is set
+    random_run_id = random.randint(0, 9999)
+
     # Set seed
     seed.seed_everything(args.seed)
     
@@ -338,8 +342,6 @@ def main():
     prefix = "subset-" if args.subset_ds else ""
     if args.eval:
         prefix = prefix + f"eval-{args.eval}-"
-    # Get an (actual) random run id as a unique identifier
-    random_run_id = random.randint(0, 9999)
     run_name = (
         f"{prefix}{args.model}-{args.processor_layers}x{args.hidden_dim}-"
         f"{time.strftime('%m_%d_%H')}-{random_run_id:04d}"

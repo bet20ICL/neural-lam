@@ -100,6 +100,7 @@ def save_dataset_samples(dataset, subset=None, coarsen_fn=None):
     """
     # Training Files
     nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022*.nc')
+    nc_files.sort()
     proccessed_dataset_path = f"data/{dataset}/samples/train"
     os.makedirs(proccessed_dataset_path, exist_ok=True)
     for j, filepath in enumerate(nc_files):

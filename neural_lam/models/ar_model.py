@@ -108,6 +108,8 @@ class ARModel(pl.LightningModule):
     def interior_mask_bool(self):
         """
         Get the interior mask as a boolean (N,) mask.
+        
+        This is simply the complement of the border mask (1 - self.border_mask).
         """
         return self.interior_mask[:, 0].to(torch.bool)
 
@@ -172,7 +174,7 @@ class ARModel(pl.LightningModule):
                 pred_std_list, dim=1
             )  # (B, pred_steps, num_grid_nodes, d_f)
         else:
-            pred_std = self.per_var_std  # (d_f,)
+            pred_std = self.per_var_std  # (d_f,) or (num_grid_nodes, d_f)
 
         return prediction, pred_std
 
@@ -195,7 +197,7 @@ class ARModel(pl.LightningModule):
             init_states, forcing_features, target_states
         )  # (B, pred_steps, num_grid_nodes, d_f)
         # prediction: (B, pred_steps, num_grid_nodes, d_f)
-        # pred_std: (B, pred_steps, num_grid_nodes, d_f) or (d_f,)
+        # pred_std: (d_f,) or (num_grid_nodes, d_f)
 
         return prediction, target_states, pred_std
     

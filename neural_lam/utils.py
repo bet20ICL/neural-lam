@@ -222,6 +222,13 @@ def load_graph(graph_name, device="cpu"):
             mesh_down_features,
         ) = ([], [], [], [])
 
+    c2f_fn = "coarse2fine_edge_index.pt"
+    c2f_path = os.path.join(graph_dir_path, c2f_fn)
+    if os.path.exists(c2f_path):
+        coarse2fine_edge_index = loads_file("coarse2fine_edge_index.pt")
+    else:
+        coarse2fine_edge_index = []
+
     return hierarchical, {
         "g2m_edge_index": g2m_edge_index,
         "m2g_edge_index": m2g_edge_index,
@@ -234,6 +241,7 @@ def load_graph(graph_name, device="cpu"):
         "mesh_up_features": mesh_up_features,
         "mesh_down_features": mesh_down_features,
         "mesh_static_features": mesh_static_features,
+        "coarse2fine_edge_index": coarse2fine_edge_index,
     }
 
 
