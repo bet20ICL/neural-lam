@@ -9,6 +9,7 @@ import torch
 
 from neural_lam.constants import ERA5UKConstants
 import era5_data_proc
+import create_grid_features
 import create_mesh
 from graph_utils import load_graph
 
@@ -68,35 +69,35 @@ def uk_hierarchy():
     # # era5_data_proc.save_dataset_samples(big_dataset, subset=subset) # don't need to save the full samples
     # era5_data_proc.create_xy(big_dataset, subset=subset) # just need this grid for graph generation
     
-    # subset = era5_data_proc.uk_big_subset
-    # era5_data_proc.save_dataset_samples(coarse_big_dataset, subset=subset, coarsen_fn=subsample)
-    # era5_data_proc.create_xy(coarse_big_dataset, subset=subset, coarsen_fn=subsample())
+    subset = era5_data_proc.uk_big_subset
+    era5_data_proc.save_dataset_samples(coarse_big_dataset, subset=subset, coarsen_fn=subsample())
+    era5_data_proc.create_xy(coarse_big_dataset, subset=subset, coarsen_fn=subsample())
     
-    big_graph_name = "uk_big_ico"
-    small_graph_name = "uk_small_ico"
-    coarse_big_graph_name = "uk_big_coarse_ico"
+    # big_graph_name = "uk_big_ico"
+    # small_graph_name = "uk_small_ico"
+    # coarse_big_graph_name = "uk_big_coarse_ico"
     
-    # Generate the graphs
-    args = ["--dataset", small_dataset, "--graph", small_graph_name]
-    create_mesh.main(args)
+    # # Generate the graphs
+    # args = ["--dataset", small_dataset, "--graph", small_graph_name]
+    # create_mesh.main(args)
     
-    args = ["--dataset", big_dataset, "--graph", big_graph_name]
-    create_mesh.main(args)
+    # args = ["--dataset", big_dataset, "--graph", big_graph_name]
+    # create_mesh.main(args)
     
-    args = ["--dataset", coarse_big_dataset, "--graph", coarse_big_graph_name, "--max_order", "5"]
-    create_mesh.main(args)
+    # args = ["--dataset", coarse_big_dataset, "--graph", coarse_big_graph_name, "--max_order", "5"]
+    # create_mesh.main(args)
     
-    # Create edges from uk_big_coarse_ico to uk_small_ico
-    fine_graph = load_graph(small_dataset, "uk_small_ico")
-    full_coarse_graph = load_graph(big_dataset, "uk_big_ico")
-    coarse_graph = load_graph(coarse_big_dataset, "uk_big_coarse_ico")
-    coarse2fine_edge_index, fine2coarse_edge_set = multi_res_edges(fine_graph, full_coarse_graph, coarse_graph)
+    # # Create edges from uk_big_coarse_ico to uk_small_ico
+    # fine_graph = load_graph(small_dataset, "uk_small_ico")
+    # full_coarse_graph = load_graph(big_dataset, "uk_big_ico")
+    # coarse_graph = load_graph(coarse_big_dataset, "uk_big_coarse_ico")
+    # coarse2fine_edge_index, fine2coarse_edge_set = multi_res_edges(fine_graph, full_coarse_graph, coarse_graph)
     
-    fine_graph_path = f"graphs/{small_graph_name}"
-    torch.save(
-        coarse2fine_edge_index, 
-        os.path.join(fine_graph_path, "coarse2fine_edge_index.pt")
-    )
+    # fine_graph_path = f"graphs/{small_graph_name}"
+    # torch.save(
+    #     coarse2fine_edge_index, 
+    #     os.path.join(fine_graph_path, "coarse2fine_edge_index.pt")
+    # )
 
 def test_subsample():
     x = torch.randn(81, 81, 6, 8)

@@ -158,3 +158,68 @@ class ERA5UKDataset(torch.utils.data.Dataset):
             forcing = torch.zeros(target_states.shape[0], target_states.shape[1], 0) # (sample_len-2, N_grid, d_forcing)
         
         return init_states, target_states, forcing
+    
+class ERA5MultiResolutionDataset(torch.utils.data.Dataset):
+    """
+    ERA5 UK dataset
+    
+    N_t' = 65
+    N_t = 65//subsample_step (= 21 for 3h steps)
+    N_x = 268 (width)
+    N_y = 238 (height)
+    N_grid = 268x238 = 63784 (total number of grid nodes)
+    d_features = 17 (d_features' = 18)
+    d_forcing = 5
+    """
+    def __init__(
+        self,
+        dataset_names, 
+        pred_length=28, 
+        split="train", 
+        subsample_step=6,
+        standardize=False,
+        subset=False,
+        control_only=False,
+        args=None,
+    ):
+        super().__init__()
+        assert split in ("train", "val", "test"), "Unknown dataset split"
+        
+        self.datasets = []
+        self.grid_sizes = []
+        for dataset_name in dataset_names:
+            dataset = ERA5UKDataset(
+                dataset_name, 
+                pred_length=pred_length, 
+                split=split, 
+                subsample_step=subsample_step,
+                standardize=standardize,
+                subset=subset,
+                control_only=control_only,
+                args=args,
+            )
+            self.datasets.append(dataset)
+            self.grid_sizes.append(dataset[0][0].shape[1])
+        
+    def __len__(self):
+        return self.datasets[0].length
+    
+    def __getitem__(self, idx):
+        """
+        Item consists of:
+        init_states: (2, num_grid_nodes, d_features)
+        target_states: (pred_steps, num_grid_nodes, d_features)
+        forcing_features: (pred_steps, num_grid_nodes, d_forcing),
+            where index 0 corresponds to index 1 of init_states
+        """
+        init_states, target_states, forcing = [], [], []
+        for dataset in self.datasets:
+            init_states_, target_states_, forcing_ = dataset[idx]
+            init_states.append(init_states_)
+            target_states.append(target_states_)
+            forcing.append(forcing_)
+        
+        # init_states = torch.stack(init_states, dim=0)
+        # target_states = torch.stack(target_states, dim=0)
+        # forcing = torch.stack(forcing, dim=0)
+        return init_states, target_states, forcing

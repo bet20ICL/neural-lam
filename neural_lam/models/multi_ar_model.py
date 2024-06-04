@@ -6,13 +6,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
+import torch.nn as nn
 import wandb
 
 # First-party
 from neural_lam import constants, metrics, utils, vis
+from neural_lam.models.graph_lam import GraphLAM
+from neural_lam.models.attention_lam import AttentionLAM
 
-
-class ARModel(pl.LightningModule):
+class MultiARModel(pl.LightningModule):
     """
     Generic auto-regressive weather model.
     Abstract class that can be extended.
@@ -27,6 +29,24 @@ class ARModel(pl.LightningModule):
         self.lr = args.lr
         self.args = args
         self.constants = args.constants
+        self.n_levels = len(args.dataset_names)
+        
+        self.models = nn.ModuleList()
+    
+        # First model is lowest resolution
+        # Does not need to attend to any other model
+        args.dataset = args.dataset_names[0]
+        args.graph = args.graphs[0]
+        args.is_first_model = True
+        self.models.append(AttentionLAM(args))
+        
+        args.is_first_model = False
+        for i in range(1, self.n_levels):
+            args.dataset = args.dataset_names[i]
+            args.graph = args.graphs[i]
+            self.models.append(
+                AttentionLAM(args)
+            )
 
         # Load static features for grid/data
         static_data_dict = utils.load_static_data(args.dataset, args=args)
@@ -75,13 +95,14 @@ class ARModel(pl.LightningModule):
         )  # (num_grid_nodes, 1), 1 for non-border
 
         self.step_length = args.step_length  # Number of hours per pred. step
-        self.val_metrics = {
-            "mse": [],
-        }
-        self.test_metrics = {
-            "mse": [],
-            "mae": [],
-        }
+        self.val_metrics = [
+            {"mse": [],}
+            for _ in range(self.n_levels)
+        ]
+        self.test_metrics = [
+            {"mse": [],"mae": [],}
+            for _ in range(self.n_levels)
+        ]
         if self.output_std:
             self.test_metrics["output_std"] = []  # Treat as metric
 
@@ -108,8 +129,12 @@ class ARModel(pl.LightningModule):
     def interior_mask_bool(self):
         """
         Get the interior mask as a boolean (N,) mask.
+        
+        This is simply the complement of the border mask (1 - self.border_mask).
         """
-        return self.interior_mask[:, 0].to(torch.bool)
+        # return self.interior_mask[:, 0].to(torch.bool)
+        # TODO: add mask for each level
+        return None 
 
     @staticmethod
     def expand_to_batch(x, batch_size):
@@ -118,14 +143,42 @@ class ARModel(pl.LightningModule):
         """
         return x.unsqueeze(0).expand(batch_size, -1, -1)
 
-    def predict_step(self, prev_state, prev_prev_state, forcing):
+
+    def predict_step(
+        self, 
+        prev_state, 
+        prev_prev_state,
+        forcing
+    ):
         """
         Step state one step ahead using prediction model, X_{t-1}, X_t -> X_t+1
         prev_state: (B, num_grid_nodes, feature_dim), X_t
         prev_prev_state: (B, num_grid_nodes, feature_dim), X_{t-1}
         forcing: (B, num_grid_nodes, forcing_dim)
+        
+        Output: X_t+1, std(X_t+1) or None
         """
-        raise NotImplementedError("No prediction step implemented")
+        
+        # Hard coded for 2 levels at the moment
+        coarse_prev_state, fine_prev_state = prev_state
+        coarse_prev_prev_state, fine_prev_prev_state, = prev_prev_state
+        coarse_forcing, fine_forcing = forcing
+        
+        coarse_grid, coarse_std, coarse_mesh = self.models[0].predict_step(
+            coarse_prev_state,
+            coarse_prev_prev_state, 
+            coarse_forcing
+        )
+        
+        fine_grid, fine_std, _ = self.models[1].predict_step(
+            fine_prev_state, 
+            fine_prev_prev_state,
+            fine_forcing,
+            coarse_mesh, # attend to the coarse mesh
+        )
+        
+        return [coarse_grid, fine_grid], [coarse_std, fine_std]
+        # raise NotImplementedError("No prediction step implemented")
 
     def unroll_prediction(self, init_states, forcing_features, true_states):
         """
@@ -134,46 +187,45 @@ class ARModel(pl.LightningModule):
         forcing_features: (B, pred_steps, num_grid_nodes, d_static_f)
         true_states: (B, pred_steps, num_grid_nodes, d_f)
         """
-        prev_prev_state = init_states[:, 0]
-        prev_state = init_states[:, 1]
-        prediction_list = []
-        pred_std_list = []
-        pred_steps = forcing_features.shape[1]
+        n_levels = len(init_states)
+        prev_prev_state = [init_states[i][:, 0] for i in range(n_levels)]
+        prev_state = [init_states[i][:, 1] for i in range(n_levels)]
+        pred_steps = forcing_features[0].shape[1]
+        
+        prediction_per_level = [[] for _ in range(n_levels)]
+        # pred_std_per_level = [[] for _ in range(n_levels)]
+        pred_std_per_level = [None for _ in range(n_levels)]
 
         for i in range(pred_steps):
-            forcing = forcing_features[:, i]
-            border_state = true_states[:, i]
+            forcing = [forcing_features[j][:, i] for j in range(n_levels)]
 
             pred_state, pred_std = self.predict_step(
                 prev_state, prev_prev_state, forcing
             )
-            # state: (B, num_grid_nodes, d_f)
-            # pred_std: (B, num_grid_nodes, d_f) or None
+            # pred_state: (B, num_grid_nodes, d_f) * n_levels
+            # pred_std: (B, num_grid_nodes, d_f) * n_levels or None * n_levels
 
-            # Overwrite border with true state
-            new_state = (
-                self.border_mask * border_state
-                + self.interior_mask * pred_state
-            )
-
-            prediction_list.append(new_state)
-            if self.output_std:
-                pred_std_list.append(pred_std)
-
+            for j in range(n_levels):
+                prediction_per_level[j].append(pred_state[j])
+                # pred_std_per_level[j].append(pred_std[j])
+                pred_std_per_level[j] = pred_std[j]
+                 
             # Update conditioning states
             prev_prev_state = prev_state
-            prev_state = new_state
-
-        prediction = torch.stack(
-            prediction_list, dim=1
-        )  # (B, pred_steps, num_grid_nodes, d_f)
-        if self.output_std:
-            pred_std = torch.stack(
-                pred_std_list, dim=1
-            )  # (B, pred_steps, num_grid_nodes, d_f)
-        else:
-            pred_std = self.per_var_std  # (d_f,)
-
+            prev_state = pred_state
+            
+        prediction = [
+            torch.stack(
+                prediction_per_level[i], dim=1
+            ) # (B, pred_steps, num_grid_nodes, d_f)
+            for i in range(n_levels)
+        ]
+        # pred_std = [
+        #     torch.stack(
+        #         pred_std_per_level[i], dim=1
+        #     )
+        #     for i in range(n_levels)
+        # ]
         return prediction, pred_std
 
     def common_step(self, batch):
@@ -205,25 +257,66 @@ class ARModel(pl.LightningModule):
         Not used otherwise
         """
         return self.common_step(batch)[0]
+    
+    # def backward(self, loss, optimizer, optimizer_idx):
+    #     super().backward(loss, optimizer, optimizer_idx)
+    #     unused_params = []
+    #     for name, param in self.named_parameters():
+    #         if param.grad is None:
+    #             unused_params.append(name)
+    #     if unused_params:
+    #         print(f"Unused parameters: {unused_params}")
 
     def training_step(self, batch):
         """
         Train on single batch
+        
+        Input: batch (X (weather state), Y (correct next state))
+        Output: loss (L(f(X), Y) some function of model ouptut and correct output)
+        
+        n_levels: multi resolution levels
+        batch:
+            init_states:
+                list of length n_levels, each containing:
+                init_state: (B, 2, num_grid_nodes, d_features)
+            target_states:
+                list of length n_levels, each containing:
+                target_state: (B, pred_steps, num_grid_nodes, d_features)
+            forcing_features: 
+                list of length n_levels, each containing:
+                forcing_features: (B, pred_steps, num_grid_nodes, d_forcing),
         """
         prediction, target, pred_std = self.common_step(batch)
-
-        # Compute loss
-        batch_loss = torch.mean(
-            self.loss(
-                prediction, target, pred_std, mask=self.interior_mask_bool
-            )
-        )  # mean over unrolled times and batch
-
+        n_levels = len(batch[0])
+        
+        # Compute loss for each level in hierarchy
+        batch_loss_per_level = []
+        for i in range(n_levels):
+            level_loss = torch.mean(
+                self.loss(
+                    prediction[i], target[i], pred_std[i], mask=self.interior_mask_bool
+                )
+            ) # mean over unrolled times and batch
+            batch_loss_per_level.append(level_loss)
+        
+        batch_loss = torch.mean(torch.stack(batch_loss_per_level))
         log_dict = {"train_loss": batch_loss}
         self.log_dict(
             log_dict, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True
         )
         return batch_loss
+    
+    def on_after_backward(self):
+        # Check for unused parameters after the backward pass
+        total, used = 0, 0
+        for name, param in self.named_parameters():
+            total += 1
+            if param.grad is None:
+                print(f"Parameter {name} was not used in the backward pass.")
+            else:
+                used += 1
+        print(f"Total parameters: {total}, used: {used}")
+ 
 
     def all_gather_cat(self, tensor_to_gather):
         """
@@ -243,45 +336,55 @@ class ARModel(pl.LightningModule):
         Run validation on single batch
         """
         prediction, target, pred_std = self.common_step(batch)
+        n_levels = len(prediction)
+        time_step_loss_per_level = []
+        mean_loss_per_level = []
+        for i in range(n_levels):
+            time_step_loss = torch.mean(
+                self.loss(
+                    prediction[i], target[i], pred_std[i], mask=self.interior_mask_bool
+                ),
+                dim=0,
+            ) # (time_steps-1)
+            mean_loss = torch.mean(time_step_loss)
+            time_step_loss_per_level.append(time_step_loss)
+            mean_loss_per_level.append(mean_loss)
 
-        time_step_loss = torch.mean(
-            self.loss(
-                prediction, target, pred_std, mask=self.interior_mask_bool
-            ),
-            dim=0,
-        )  # (time_steps-1)
-        mean_loss = torch.mean(time_step_loss)
-
-        # Log loss per time step forward and mean
-        val_log_dict = {
-            f"val_loss_unroll{step}": time_step_loss[step - 1]
-            for step in self.constants.VAL_STEP_LOG_ERRORS
-        }
-        val_log_dict["val_mean_loss"] = mean_loss
+        val_log_dict = {}    
+        for i in range(n_levels):
+            # Log loss per level, per time step forward and mean
+            for step in self.constants.VAL_STEP_LOG_ERRORS:
+                val_log_dict[f"level-{i}_val_loss_unroll{step}"] = time_step_loss_per_level[i][step - 1]
+            val_log_dict[f"level-{i}_val_mean_loss"] = mean_loss_per_level[i]
+            
         self.log_dict(
             val_log_dict, on_step=False, on_epoch=True, sync_dist=True
         )
-
-        # Store MSEs
-        entry_mses = metrics.mse(
-            prediction,
-            target,
-            pred_std,
-            mask=self.interior_mask_bool,
-            sum_vars=False,
-        )  # (B, pred_steps, d_f)
-        self.val_metrics["mse"].append(entry_mses)
+        for i in range(n_levels):
+            # Store MSEs
+            entry_mses = metrics.mse(
+                prediction[i],
+                target[i],
+                pred_std[i],
+                mask=self.interior_mask_bool,
+                sum_vars=False,
+            )  # (B, pred_steps, d_f)
+            self.val_metrics[i]["mse"].append(entry_mses)
 
     def on_validation_epoch_end(self):
         """
         Compute val metrics at the end of val epoch
         """
-        # Create error maps for all test metrics
-        self.aggregate_and_plot_metrics(self.val_metrics, prefix="val")
+        for i in range(self.n_levels):
+            # Create error maps for all test metrics
+            self.aggregate_and_plot_metrics(
+                self.val_metrics[i], 
+                prefix=f"level-{i}_val"
+            )
 
-        # Clear lists with validation metrics values
-        for metric_list in self.val_metrics.values():
-            metric_list.clear()
+            # Clear lists with validation metrics values
+            for metric_list in self.val_metrics[i].values():
+                metric_list.clear()
 
     # pylint: disable-next=unused-argument
     def test_step(self, batch, batch_idx):

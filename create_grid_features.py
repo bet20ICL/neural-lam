@@ -11,7 +11,7 @@ import xarray as xr
 from era5_data_proc import uk_subset, uk_small_subset, uk_big_subset, open_file
 from neural_lam.constants import ERA5UKConstants
 
-def era5_static_features(grid_xy, dataset):
+def era5_static_features(grid_xy, dataset, coarsen=None):
     """Get static features for the grid nodes (surface geopotential and land sea mask)
 
     Args:
@@ -31,11 +31,13 @@ def era5_static_features(grid_xy, dataset):
             subset = uk_subset
         elif dataset == "era5_uk_small":
             subset = uk_small_subset
-        elif dataset == "era5_uk_big":
+        elif dataset in ["era5_uk_big", "era5_uk_big_coarse"]:
             subset = uk_big_subset
         static_data = subset(static_data)
         
     static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_y, N_x)
+    if coarsen:
+        static_data = static_data[:, ::coarsen, ::coarsen]
     static_data = static_data.transpose(1, 2, 0).reshape(grid_xy.shape[0], -1) # (N_y * N_x, N_var)
     return static_data
 
@@ -62,14 +64,14 @@ def create_era5_grid_features(args, static_dir_path):
     )
     torch.save(grid_features, os.path.join(static_dir_path, "grid_features_simple.pt"))
     
-    static_data = era5_static_features(grid_xy, args.dataset)
+    static_data = era5_static_features(grid_xy, args.dataset, args.coarsen)
     grid_features = torch.cat(
         (grid_features, torch.tensor(static_data)), dim=1
     ) # (N_grid, N_var)
     grid_features = grid_features.to(torch.float)
     torch.save(grid_features, os.path.join(static_dir_path, "grid_features.pt"))
 
-def main():
+def main(args=None):
     """
     Pre-compute all static features related to the grid nodes
     """
@@ -80,7 +82,16 @@ def main():
         default="meps_example",
         help="Dataset to compute weights for (default: meps_example)",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--coarsen",
+        type=int,
+        default=None,
+        help="Coarsen factor for the dataset (default: None - do not coarsen)",
+    )
+    if args:
+        args = parser.parse_args(args)
+    else:    
+        args = parser.parse_args()
 
     static_dir_path = os.path.join("data", args.dataset, "static")
     

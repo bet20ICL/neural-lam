@@ -5,6 +5,7 @@
 #SBATCH --mail-user=bet20 # required to send email notifcations - please replace <your_username> with your college login name or email address
 #SBATCH --time=48:00:00
 #SBATCH --output=./slurm_log/slurm20-%j.out
+#SBATCH --exclude=kingfisher
 
 export PATH=/homes/bet20/miniconda3/bin:$PATH
 export PATH=/usr/bin/latex:$PATH
@@ -29,4 +30,8 @@ which python
 # python train_model.py --model graph_lam --dataset era5_uk --graph uk_graphcast --batch_size 8
 # python train_model.py --model graph_lam --dataset era5_global --graph global_graphcast --batch_size 8
 
-python train_model.py --model graph_lam --dataset new_era5_uk --graph uk_grid --batch_size 8
+# python train_model.py --model graph_lam --dataset new_era5_uk --graph uk_grid --batch_size 8
+# python train_model.py --model graph_lam --dataset era5_uk_big_coarse --graph uk_big_coarse_ico --batch_size 8
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --epochs 5 --batch_size 4 --overfit 1
+
+python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 4
