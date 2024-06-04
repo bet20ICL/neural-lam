@@ -233,6 +233,24 @@ def get_args():
         default=0,
         help="Use two years of data for training (default: 0 (false))",
     )
+    parser.add_argument(
+        "--train_loss_mask",
+        type=int,
+        default=0,
+        help="Use loss mask to only evaluate training loss on a local area (default: 0 (false))",
+    )
+    parser.add_argument(
+        "--val_loss_mask",
+        type=int,
+        default=0,
+        help="Use loss mask to only evaluate training loss on a local area (default: 0 (false))",
+    )
+    parser.add_argument(
+        "--border_forcing",
+        type=int,
+        default=0,
+        help="Use border forcing (default: 0 (false))",
+    )
     args = parser.parse_args()
 
     # Asserts for arguments
