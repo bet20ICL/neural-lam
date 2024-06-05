@@ -357,6 +357,8 @@ class MultiARModel(pl.LightningModule):
                 val_log_dict[f"level-{i}_val_loss_unroll{step}"] = time_step_loss_per_level[i][step - 1]
             val_log_dict[f"level-{i}_val_mean_loss"] = mean_loss_per_level[i]
             
+        val_log_dict[f"val_mean_loss"] = mean_loss_per_level[-1]
+            
         self.log_dict(
             val_log_dict, on_step=False, on_epoch=True, sync_dist=True
         )
