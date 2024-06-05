@@ -166,7 +166,7 @@ def get_args(default=False):
     parser.add_argument(
         "--step_length",
         type=int,
-        default=3,
+        default=1,
         help="Step length in hours to consider single time step 1-3 "
         "(default: 3)",
     )
@@ -258,7 +258,7 @@ def get_args(default=False):
 
     # Asserts for arguments
     assert args.model in MODELS, f"Unknown model: {args.model}"
-    assert args.step_length <= 3, "Too high step length"
+    # assert args.step_length <= 3, "Too high step length"
     assert args.eval in (
         None,
         "val",
@@ -287,6 +287,7 @@ def main():
             split="train",
             standardize=bool(args.standardize),
             args=args,
+            subsample_step=args.step_length,
         )
         val_set = ERA5UKDataset(
             args.dataset,
@@ -294,6 +295,7 @@ def main():
             split="val",
             standardize=bool(args.standardize),
             args=args,
+            subsample_step=args.step_length,
         )
         args.constants = ERA5UKConstants
     elif args.dataset == "meps_example":
@@ -342,6 +344,7 @@ def main():
         torch.set_float32_matmul_precision(
             "high"
         )  # Allows using Tensor Cores on A100s
+        print(f"Devices: {torch.cuda.device_count()}")
         print("===== CUDA ENABLED =====")
         print("Using deterministic algorithms:", torch.are_deterministic_algorithms_enabled())
     else:

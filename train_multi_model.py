@@ -176,7 +176,7 @@ def get_args():
     parser.add_argument(
         "--step_length",
         type=int,
-        default=3,
+        default=1,
         help="Step length in hours to consider single time step 1-3 "
         "(default: 3)",
     )
@@ -244,16 +244,28 @@ def get_args():
         help="Use two years of data for training (default: 0 (false))",
     )
     parser.add_argument(
-        "--multi_resolution_model",
-        type=str,
-        default=None,
-        help="Use multi-resolution model (default: None)",
+        "--train_loss_mask",
+        type=int,
+        default=0,
+        help="Use loss mask to only evaluate training loss on a local area (default: 0 (false))",
+    )
+    parser.add_argument(
+        "--val_loss_mask",
+        type=int,
+        default=0,
+        help="Use loss mask to only evaluate training loss on a local area (default: 0 (false))",
+    )
+    parser.add_argument(
+        "--border_forcing",
+        type=int,
+        default=0,
+        help="Use border forcing (default: 0 (false))",
     )
     args = parser.parse_args()
 
     # Asserts for arguments
     # assert args.model in MODELS, f"Unknown model: {args.model}"
-    assert args.step_length <= 3, "Too high step length"
+    # assert args.step_length <= 3, "Too high step length"
     assert args.eval in (
         None,
         "val",
@@ -365,8 +377,6 @@ def main():
         max_epochs=args.epochs,
         deterministic=True,
         strategy="ddp",
-        # strategy="ddp_find_unused_parameters_true",
-        # strategy="auto",
         accelerator=device_name,
         logger=logger,
         log_every_n_steps=1,

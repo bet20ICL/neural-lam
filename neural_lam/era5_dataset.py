@@ -24,7 +24,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         dataset_name, 
         pred_length=28, 
         split="train", 
-        subsample_step=6,
+        subsample_step=1,
         standardize=False,
         subset=False,
         control_only=False,
@@ -45,6 +45,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
             # e.g. n = '20200101000000.npy'
             self.sample_names = [os.path.basename(path) for path in sample_paths] 
             self.sample_names.sort()
+            self.sample_names = self.sample_names[::subsample_step]
             self.sample_times = [dt.datetime.strptime(n, '%Y%m%d%H%M%S.npy') for n in self.sample_names]
             self.length = len(self.sample_names) - self.sample_length + 1
             
@@ -59,6 +60,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
                 sample_paths = glob.glob(os.path.join(month_dir, "*.npy"))
                 sample_names = [os.path.join(month, os.path.basename(path)) for path in sample_paths]
                 sample_names.sort()
+                sample_names = sample_names[::subsample_step]
                 # e.g. n = "01/20230101000000.npy"
                 sample_times = [dt.datetime.strptime(n[3:], '%Y%m%d%H%M%S.npy') for n in sample_names]
                 self.month_samples[month] = sample_names
@@ -118,7 +120,8 @@ class ERA5UKDataset(torch.utils.data.Dataset):
             target_states = (target_states - self.data_mean) / self.data_std
         
         # === Forcing features ===
-        hour_inc = torch.arange(self.sample_length) * 6 # (sample_len,)
+        # Each step is 6 hours long
+        hour_inc = torch.arange(self.sample_length) * 6 * self.subsample_step # (sample_len,)
         init_dt = self.sample_times[idx]
         
         init_hour = init_dt.hour
@@ -176,7 +179,7 @@ class ERA5MultiResolutionDataset(torch.utils.data.Dataset):
         dataset_names, 
         pred_length=28, 
         split="train", 
-        subsample_step=6,
+        subsample_step=1,
         standardize=False,
         subset=False,
         control_only=False,

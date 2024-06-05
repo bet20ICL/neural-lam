@@ -41,9 +41,9 @@ RAW_ERA5_PATH = ERA5UKConstants.RAW_ERA5_PATH
 
 c = cdsapi.Client()
 
-year = [2022]
-# month = [i for i in range(1, 13)]
-month = [10]
+year = [2019]
+month = [i for i in range(1, 13)]
+# month = [10]
 
 year_str = [str(i) for i in year]
 month_str = [str(i).zfill(2) for i in month]

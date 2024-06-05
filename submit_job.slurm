@@ -55,3 +55,46 @@ which python
 
 # 5705964
 # python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8
+
+# 5706045
+# python train_model.py --model gat_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8
+
+# 5713102
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8
+
+# 5713103
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --val_loss_mask 1
+
+# 5713104
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --val_loss_mask 1 --train_loss_mask 1
+
+# 5713108
+python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+
+# 5713585
+# test new graph loading doesnt break
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8
+
+# 5713876
+# test time resolution data doesnt break
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 1
+
+# 5714254
+# 2 step
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 2
+
+# 5714255
+# 4 step
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 4
+
+# 5714112 
+# 2 GPUs
+
+# 5714117
+# 4 GPUs
+
+# 5714263
+# python train_multi_dataset.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+
+# 5714305
+python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8 --epochs 10
