@@ -96,6 +96,7 @@ class BaseGraphModel(ARModel):
         
         If encoder, processor or decoder components require the graph, they should be updated as well.
         """
+        self.args.graph = graph
         self._load_graph_attributes(graph)
         # Encoder and decoder are InteractionNets, their edge index must be updated
         self.g2m_gnn.set_edge_index(self.g2m_edge_index)

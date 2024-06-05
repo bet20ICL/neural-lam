@@ -34,4 +34,7 @@ which python
 # python train_model.py --model graph_lam --dataset era5_uk_big_coarse --graph uk_big_coarse_ico --batch_size 8
 # python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --epochs 5 --batch_size 4 --overfit 1
 
-python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 4
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 4
+python train_multi_dataset.py --model graph_lam --dataset era5_uk_big_small --batch_size 8 --epochs 6 --overfit 1
+
+python train_model.py --model graph_lam --dataset era5_uk_small --graph uk_small_ico --batch_size 8 --epochs 2 --overfit 1

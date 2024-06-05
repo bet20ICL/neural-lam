@@ -25,57 +25,18 @@ class ARModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.lr = args.lr
+        self.output_std = bool(args.output_std)
+        
+        # Shit I added
         self.args = args
         self.constants = args.constants
         self.train_loss_mask = args.train_loss_mask
         self.val_loss_mask = args.val_loss_mask
         self.border_forcing = args.border_forcing
-
-        # Load static features for grid/data
-        static_data_dict = utils.load_static_data(args.dataset, args=args)
-        for static_data_name, static_data_tensor in static_data_dict.items():
-            self.register_buffer(
-                static_data_name, static_data_tensor, persistent=False
-            )
-
-        # Double grid output dim. to also output std.-dev.
-        self.output_std = bool(args.output_std)
-        if self.output_std:
-            self.grid_output_dim = (
-                2 * self.constants.GRID_STATE_DIM
-            )  # Pred. dim. in grid cell
-        else:
-            self.grid_output_dim = (
-                self.constants.GRID_STATE_DIM
-            )  # Pred. dim. in grid cell
-
-            # Store constant per-variable std.-dev. weighting
-            # Note that this is the inverse of the multiplicative weighting
-            # in wMSE/wMAE
-            self.register_buffer(
-                "per_var_std",
-                self.step_diff_std / torch.sqrt(self.param_weights),
-                persistent=False,
-            )
-
-        # grid_dim from data + static
-        (
-            self.num_grid_nodes,
-            grid_static_dim,
-        ) = self.grid_static_features.shape  # 63784 = 268x238
-        self.grid_dim = (
-            2 * self.constants.GRID_STATE_DIM
-            + grid_static_dim
-            + (self.constants.GRID_FORCING_DIM if not args.no_forcing else 0)
-        )
+        self.update_dataset(self.args.dataset)
 
         # Instantiate loss function
         self.loss = metrics.get_metric(args.loss)
-
-        # Pre-compute interior mask for use in loss function
-        self.register_buffer(
-            "interior_mask", 1.0 - self.border_mask, persistent=False
-        )  # (num_grid_nodes, 1), 1 for non-border
 
         self.step_length = args.step_length  # Number of hours per pred. step
         self.val_metrics = {
@@ -115,6 +76,53 @@ class ARModel(pl.LightningModule):
         This is simply the complement of the border mask (1 - self.border_mask).
         """
         return self.interior_mask[:, 0].to(torch.bool)
+    
+    def update_dataset(self, dataset):
+        """
+        Update dataset used
+        """
+        self.args.dataset = dataset
+        # Load static features for grid/data
+        static_data_dict = utils.load_static_data(dataset, args=self.args)
+        for static_data_name, static_data_tensor in static_data_dict.items():
+            self.register_buffer(
+                static_data_name, static_data_tensor, persistent=False
+            )
+            
+        # grid_dim from data + static
+        (
+            self.num_grid_nodes,
+            grid_static_dim,
+        ) = self.grid_static_features.shape  # 63784 = 268x238
+        self.grid_dim = (
+            2 * self.constants.GRID_STATE_DIM
+            + grid_static_dim
+            + (self.constants.GRID_FORCING_DIM if not self.args.no_forcing else 0)
+        )
+        
+        # Pre-compute interior mask for use in loss function
+        self.register_buffer(
+            "interior_mask", 1.0 - self.border_mask, persistent=False
+        )  # (num_grid_nodes, 1), 1 for non-border
+        
+        if self.output_std:
+            # Double grid output dim. to also output std.-dev.
+            self.grid_output_dim = (
+                2 * self.constants.GRID_STATE_DIM
+            )  # Pred. dim. in grid cell
+        else:
+            self.grid_output_dim = (
+                self.constants.GRID_STATE_DIM
+            )  # Pred. dim. in grid cell
+
+            # Store constant per-variable std.-dev. weighting
+            # Note that this is the inverse of the multiplicative weighting
+            # in wMSE/wMAE
+            self.register_buffer(
+                "per_var_std",
+                self.step_diff_std / torch.sqrt(self.param_weights),
+                persistent=False,
+            )
     
     @staticmethod
     def expand_to_batch(x, batch_size):

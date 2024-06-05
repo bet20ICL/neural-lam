@@ -77,17 +77,28 @@ def uk_hierarchy():
     big_dataset = "era5_uk_big"
     coarse_big_dataset = f"{big_dataset}_coarse" 
     
-    subset = era5_data_proc.uk_subset
+    # subset = era5_data_proc.uk_small_subset
     # era5_data_proc.save_dataset_samples(small_dataset, subset=subset)
-    era5_data_proc.create_xy(small_dataset, subset=subset)
+    # era5_data_proc.create_xy(small_dataset, subset=subset)
+    # remember to also
+    # create_grid_features
+    # create_parameter_weights
     
     # subset = era5_data_proc.uk_big_subset
     # # era5_data_proc.save_dataset_samples(big_dataset, subset=subset) # don't need to save the full samples
     # era5_data_proc.create_xy(big_dataset, subset=subset) # just need this grid for graph generation
+    # remember to also
+    # create_grid_features
+    # create_parameter_weights
     
     # subset = era5_data_proc.uk_big_subset
     # era5_data_proc.save_dataset_samples(coarse_big_dataset, subset=subset, coarsen_fn=subsample())
     # era5_data_proc.create_xy(coarse_big_dataset, subset=subset, coarsen_fn=subsample())
+    # remember to also
+    create_grid_features.main(
+        ["--dataset", coarse_big_dataset, "--coarsen", "3"]
+    )
+    # create_parameter_weights
     
     # big_graph_name = "uk_big_ico"
     # small_graph_name = "uk_small_ico"

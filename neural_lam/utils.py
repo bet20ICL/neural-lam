@@ -227,7 +227,7 @@ def load_graph(graph_name, device="cpu"):
     if os.path.exists(c2f_path):
         coarse2fine_edge_index = loads_file("coarse2fine_edge_index.pt")
     else:
-        coarse2fine_edge_index = []
+        coarse2fine_edge_index = torch.tensor([])
 
     return hierarchical, {
         "g2m_edge_index": g2m_edge_index,
