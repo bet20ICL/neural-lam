@@ -53,6 +53,17 @@ class GraphLAM(BaseGraphModel):
                 for net in processor_nets
             ],
         )
+        
+    def _update_proccessor_graph(self):
+        """
+        Update the graph used by the processor. 
+        Override this method in subclasses.
+        
+        If the processor does not require the graph, this method can be empty
+        """
+        # Update each InteractionNet in processor with the new edge index
+        for net in self.processor:
+            net.set_edge_index(self.m2m_edge_index)
 
     def get_num_mesh(self):
         """

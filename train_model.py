@@ -37,7 +37,7 @@ MODELS = {
     "stats_model": StatsModel,
 }
 
-def get_args():
+def get_args(default=False):
     parser = ArgumentParser(
         description="Train or evaluate NeurWP models for LAM"
     )
@@ -251,7 +251,10 @@ def get_args():
         default=0,
         help="Use border forcing (default: 0 (false))",
     )
-    args = parser.parse_args()
+    if default:
+        args = parser.parse_args([])
+    else:
+        args = parser.parse_args()
 
     # Asserts for arguments
     assert args.model in MODELS, f"Unknown model: {args.model}"

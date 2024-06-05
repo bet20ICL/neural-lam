@@ -15,17 +15,8 @@ class BaseGraphModel(ARModel):
 
     def __init__(self, args):
         super().__init__(args)
-
-        # Load graph with static features
-        # NOTE: (IMPORTANT!) mesh nodes MUST have the first
-        # num_mesh_nodes indices,
-        self.hierarchical, graph_ldict = utils.load_graph(args.graph)
-        for name, attr_value in graph_ldict.items():
-            # Make BufferLists module members and register tensors as buffers
-            if isinstance(attr_value, torch.Tensor):
-                self.register_buffer(name, attr_value, persistent=False)
-            else:
-                setattr(self, name, attr_value)
+        
+        self._load_graph_attributes(args.graph)
 
         # Specify dimensions of data
         self.num_mesh_nodes, _ = self.get_num_mesh()
@@ -73,6 +64,43 @@ class BaseGraphModel(ARModel):
             + [self.grid_output_dim],
             layer_norm=False,
         )  # No layer norm on this one
+        
+    def _load_graph_attributes(self, graph):
+        """
+        Load graph attributes from a dictionary into the model.
+        """
+        # Load graph with static features
+        # NOTE: (IMPORTANT!) mesh nodes MUST have the first
+        # num_mesh_nodes indices,
+        self.hierarchical, graph_ldict = utils.load_graph(graph)
+        for name, attr_value in graph_ldict.items():
+            # Make BufferLists module members and register tensors as buffers
+            if isinstance(attr_value, torch.Tensor):
+                self.register_buffer(name, attr_value, persistent=False)
+            else:
+                setattr(self, name, attr_value)
+                
+    def _update_proccessor_graph(self):
+        """
+        Update the graph used by the processor. 
+        Override this method in subclasses.
+        
+        If the processor does not require the graph, this method can be empty
+        """
+        pass
+    
+    def update_graph(self, graph):
+        """
+        Update the graph used by the model. 
+        This should only be called after the model has been initialized.
+        
+        If encoder, processor or decoder components require the graph, they should be updated as well.
+        """
+        self._load_graph_attributes(graph)
+        # Encoder and decoder are InteractionNets, their edge index must be updated
+        self.g2m_gnn.set_edge_index(self.g2m_edge_index)
+        self.m2g_gnn.set_edge_index(self.m2g_edge_index)
+        self._update_proccessor_graph()
 
     def get_num_mesh(self):
         """
