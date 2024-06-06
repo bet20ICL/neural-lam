@@ -31,7 +31,7 @@ def era5_static_features(grid_xy, dataset, coarsen=None):
             subset = uk_subset
         elif dataset == "era5_uk_small":
             subset = uk_small_subset
-        elif dataset in ["era5_uk_big", "era5_uk_big_coarse"]:
+        elif "era5_uk_big" in dataset:
             subset = uk_big_subset
         static_data = subset(static_data)
         

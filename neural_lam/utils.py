@@ -81,13 +81,13 @@ def load_static_data(dataset_name, device="cpu", args=None):
             )  # (N_grid, d_grid_static)
             print("Using simple grid features")
         else:
-            print("Using original grid features")
+            print("Using full grid features")
             
         if args.simple_param_weights:
             param_weights = torch.ones_like(param_weights, dtype=torch.float32, device=device)
             print("Using simple parameter weights")
         else:
-            print("Using original parameter weights")
+            print("Using full parameter weights")
 
     return {
         "border_mask": border_mask,

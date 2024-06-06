@@ -28,6 +28,15 @@ os.environ["WANDB_CONFIG_DIR"] = "/work/ec249/ec249/bet20/.config/wandb"
 wandb_mode = os.environ.get('WANDB_MODE')
 print(f"WANDB_MODE: {wandb_mode}")
 
+# # Access SLURM_NTASKS environment variable
+# ntasks = os.getenv('SLURM_NTASKS')
+# # Check if SLURM_NTASKS is set and set SLURM_NTASKS_PER_NODE to the same value
+# if ntasks:
+#     print(f"SLURM_NTASKS: {ntasks}")
+#     os.environ['SLURM_NTASKS_PER_NODE'] = ntasks
+# else:
+#     raise RuntimeError('SLURM_NTASKS is not set. Please check your SLURM job configuration.')
+
 MODELS = {
     "graph_lam": GraphLAM,
     "gcn_lam": GCNLAM,
@@ -400,6 +409,9 @@ def main():
     # Only init once, on rank 0 only
     if trainer.global_rank == 0:
         utils.init_wandb_metrics(logger, args.constants)  # Do after wandb.init
+    
+    print("===== Run Name =====")
+    print(wandb.run.name)
     print("===== Trainer initialized =====")
     
     if args.eval:

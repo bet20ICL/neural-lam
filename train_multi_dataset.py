@@ -465,6 +465,8 @@ def main():
                 # Only init once, on rank 0 only
                 if trainer.global_rank == 0:
                     utils.init_wandb_metrics(logger, args.constants)  # Do after wandb.init
+                    print("===== Run Name =====")
+                    print(wandb.run.name)
             else:
                 # Don't use masks for second dataset
                 model.train_loss_mask = 0

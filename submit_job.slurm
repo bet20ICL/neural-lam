@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --time=06:00:00
+#SBATCH --time=8:00:00
 #SBATCH --account=ec249
 
 # texlive
@@ -69,7 +69,7 @@ which python
 # python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --val_loss_mask 1 --train_loss_mask 1
 
 # 5713108
-python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
 
 # 5713585
 # test new graph loading doesnt break
@@ -97,4 +97,23 @@ python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batc
 # python train_multi_dataset.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
 
 # 5714305
-python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8 --epochs 10
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 2 --epochs 2 --overfit 1
+
+# python train_multi_dataset.py --model graph_lam --dataset era5_uk_big_small --batch_size 2 --epochs 2 --overfit 1
+
+# 5714388
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+
+# 5714389
+# python train_multi_dataset.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+
+# multi gpu
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8
+ 
+# 5716066
+# python train_model.py --model graph_lam --dataset era5_uk_big_2_years --graph uk_big_ico --batch_size 8
+
+
+# eval multimodel
+# 5716190
+python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8 --eval val --load ./saved_models/graph_lam-4x64-06_06_03-7248/min_val_loss.ckpt
