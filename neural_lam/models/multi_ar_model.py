@@ -114,7 +114,9 @@ class MultiARModel(pl.LightningModule):
         self.plotted_examples = 0
 
         # For storing spatial loss maps during evaluation
-        self.spatial_loss_maps = []
+        self.spatial_loss_maps = [
+            [] for _ in range(self.n_levels)
+        ]
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(
@@ -396,22 +398,28 @@ class MultiARModel(pl.LightningModule):
         prediction, target, pred_std = self.common_step(batch)
         # prediction: (B, pred_steps, num_grid_nodes, d_f)
         # pred_std: (B, pred_steps, num_grid_nodes, d_f) or (d_f,)
-
-        time_step_loss = torch.mean(
-            self.loss(
-                prediction, target, pred_std, mask=self.interior_mask_bool
-            ),
-            dim=0,
-        )  # (time_steps-1,)
-        mean_loss = torch.mean(time_step_loss)
-
-        # Log loss per time step forward and mean
-        test_log_dict = {
-            f"test_loss_unroll{step}": time_step_loss[step - 1]
-            for step in self.constants.VAL_STEP_LOG_ERRORS
-        }
-        test_log_dict["test_mean_loss"] = mean_loss
-
+        n_levels = len(prediction)
+        time_step_loss_per_level = []
+        mean_loss_per_level = []
+        for i in range(n_levels):
+            time_step_loss = torch.mean(
+                self.loss(
+                    prediction[i], target[i], pred_std[i], mask=self.interior_mask_bool
+                ),
+                dim=0,
+            ) # (time_steps-1)
+            mean_loss = torch.mean(time_step_loss)
+            time_step_loss_per_level.append(time_step_loss)
+            mean_loss_per_level.append(mean_loss)
+            
+        test_log_dict = {}
+        for i in range(n_levels):
+            # Log loss per level, per time step forward and mean
+            for step in self.constants.VAL_STEP_LOG_ERRORS:
+                test_log_dict[f"level-{i}_test_loss_unroll{step}"] = time_step_loss_per_level[i][step - 1]
+            test_log_dict[f"level-{i}_test_mean_loss"] = mean_loss_per_level[i]
+            
+        test_log_dict[f"test_mean_loss"] = mean_loss_per_level[-1]
         self.log_dict(
             test_log_dict, on_step=False, on_epoch=True, sync_dist=True
         )
@@ -420,45 +428,47 @@ class MultiARModel(pl.LightningModule):
         # Note: explicitly list metrics here, as test_metrics can contain
         # additional ones, computed differently, but that should be aggregated
         # on_test_epoch_end
-        for metric_name in ("mse", "mae"):
-            metric_func = metrics.get_metric(metric_name)
-            batch_metric_vals = metric_func(
-                prediction,
-                target,
-                pred_std,
-                mask=self.interior_mask_bool,
-                sum_vars=False,
-            )  # (B, pred_steps, d_f)
-            self.test_metrics[metric_name].append(batch_metric_vals)
+        for i in range(n_levels):
+            for metric_name in ("mse", "mae"):
+                metric_func = metrics.get_metric(metric_name)
+                batch_metric_vals = metric_func(
+                    prediction[i],
+                    target[i],
+                    pred_std[i],
+                    mask=self.interior_mask_bool,
+                    sum_vars=False,
+                )  # (B, pred_steps, d_f)
+                self.test_metrics[i][metric_name].append(batch_metric_vals)
 
-        if self.output_std:
-            # Store output std. per variable, spatially averaged
-            mean_pred_std = torch.mean(
-                pred_std[..., self.interior_mask_bool, :], dim=-2
-            )  # (B, pred_steps, d_f)
-            self.test_metrics["output_std"].append(mean_pred_std)
+            if self.output_std:
+                # Store output std. per variable, spatially averaged
+                mean_pred_std = torch.mean(
+                    pred_std[i][..., self.interior_mask_bool, :], dim=-2
+                )  # (B, pred_steps, d_f)
+                self.test_metrics[i]["output_std"].append(mean_pred_std)
 
-        # Save per-sample spatial loss for specific times
-        spatial_loss = self.loss(
-            prediction, target, pred_std, average_grid=False
-        )  # (B, pred_steps, num_grid_nodes)
-        log_spatial_losses = spatial_loss[:, self.constants.VAL_STEP_LOG_ERRORS - 1]
-        self.spatial_loss_maps.append(log_spatial_losses)
-        # (B, N_log, num_grid_nodes)
+            # Save per-sample spatial loss for specific times
+            spatial_loss = self.loss(
+                prediction[i], target[i], pred_std[i], average_grid=False
+            )  # (B, pred_steps, num_grid_nodes)
+            log_spatial_losses = spatial_loss[:, self.constants.VAL_STEP_LOG_ERRORS - 1]
+            self.spatial_loss_maps[i].append(log_spatial_losses)
+            # (B, N_log, num_grid_nodes)
 
-        # Plot example predictions (on rank 0 only)
-        if (
-            self.trainer.is_global_zero
-            and self.plotted_examples < self.n_example_pred
-        ):
-            # Need to plot more example predictions
-            n_additional_examples = min(
-                prediction.shape[0], self.n_example_pred - self.plotted_examples
-            )
+        # TODO: add plotting for ERA5
+        # # Plot example predictions (on rank 0 only)
+        # if (
+        #     self.trainer.is_global_zero
+        #     and self.plotted_examples < self.n_example_pred
+        # ):
+        #     # Need to plot more example predictions
+        #     n_additional_examples = min(
+        #         prediction.shape[0], self.n_example_pred - self.plotted_examples
+        #     )
 
-            self.plot_examples(
-                batch, n_additional_examples, prediction=prediction, args=self.args
-            )
+        #     self.plot_examples(
+        #         batch, n_additional_examples, prediction=prediction, args=self.args
+        #     )
 
     def plot_examples(self, batch, n_examples, prediction=None, args=None):
         """
@@ -591,7 +601,7 @@ class MultiARModel(pl.LightningModule):
         for name, fig in summary_metric_curves:
             log_dict[f"{full_log_name}_{name}_rollout"] = wandb.Image(fig)
 
-        if prefix == "test":
+        if "test" in prefix:
             # Save pdf
             if metric_fig:
                 metric_fig.savefig(
@@ -661,51 +671,57 @@ class MultiARModel(pl.LightningModule):
         Will gather stored tensors and perform plotting and logging on rank 0.
         """
         # Create error maps for all test metrics
-        self.aggregate_and_plot_metrics(self.test_metrics, prefix="test")
-
-        # Plot spatial loss maps
-        spatial_loss_tensor = self.all_gather_cat(
-            torch.cat(self.spatial_loss_maps, dim=0)
-        )  # (N_test, N_log, num_grid_nodes)
-        if self.trainer.is_global_zero:
-            mean_spatial_loss = torch.mean(
-                spatial_loss_tensor, dim=0
-            )  # (N_log, num_grid_nodes)
-
-            # TODO: figure out plotting for ERA5
-            if "era5" not in self.args.dataset:
-                loss_map_figs = [
-                    vis.plot_spatial_error(
-                        loss_map,
-                        self.interior_mask[:, 0],
-                        title=f"Test loss, t={t_i} ({self.step_length*t_i} h)",
-                    )
-                    for t_i, loss_map in zip(
-                        self.constants.VAL_STEP_LOG_ERRORS, mean_spatial_loss
-                    )
-                ]
-
-                # log all to same wandb key, sequentially
-                for fig in loss_map_figs:
-                    wandb.log({"test_loss": wandb.Image(fig)})
-
-                # also make without title and save as pdf
-                pdf_loss_map_figs = [
-                    vis.plot_spatial_error(loss_map, self.interior_mask[:, 0])
-                    for loss_map in mean_spatial_loss
-                ]
-                pdf_loss_maps_dir = os.path.join(wandb.run.dir, "spatial_loss_maps")
-                os.makedirs(pdf_loss_maps_dir, exist_ok=True)
-                for t_i, fig in zip(
-                    self.constants.VAL_STEP_LOG_ERRORS, pdf_loss_map_figs
-                ):
-                    fig.savefig(os.path.join(pdf_loss_maps_dir, f"loss_t{t_i}.pdf"))
-            
-            # save mean spatial loss as .pt file also
-            torch.save(
-                mean_spatial_loss.cpu(),
-                os.path.join(wandb.run.dir, "mean_spatial_loss.pt"),
+        for i in range(self.n_levels):
+            # Create error maps for all test metrics
+            self.aggregate_and_plot_metrics(
+                self.test_metrics[i], 
+                prefix=f"level-{i}_test"
             )
+                
+            # TODO: figure out plotting for ERA5
+            # Plot spatial loss maps
+            spatial_loss_tensor = self.all_gather_cat(
+                torch.cat(self.spatial_loss_maps[i], dim=0)
+            )  # (N_test, N_log, num_grid_nodes)
+            if self.trainer.is_global_zero:
+                mean_spatial_loss = torch.mean(
+                    spatial_loss_tensor, dim=0
+                )  # (N_log, num_grid_nodes)
+
+                # TODO: figure out plotting for ERA5
+                if "era5" not in self.args.dataset:
+                    loss_map_figs = [
+                        vis.plot_spatial_error(
+                            loss_map,
+                            self.interior_mask[:, 0],
+                            title=f"Test loss, t={t_i} ({self.step_length*t_i} h)",
+                        )
+                        for t_i, loss_map in zip(
+                            self.constants.VAL_STEP_LOG_ERRORS, mean_spatial_loss
+                        )
+                    ]
+
+                    # log all to same wandb key, sequentially
+                    for fig in loss_map_figs:
+                        wandb.log({"test_loss": wandb.Image(fig)})
+
+                    # also make without title and save as pdf
+                    pdf_loss_map_figs = [
+                        vis.plot_spatial_error(loss_map, self.interior_mask[:, 0])
+                        for loss_map in mean_spatial_loss
+                    ]
+                    pdf_loss_maps_dir = os.path.join(wandb.run.dir, "spatial_loss_maps")
+                    os.makedirs(pdf_loss_maps_dir, exist_ok=True)
+                    for t_i, fig in zip(
+                        self.constants.VAL_STEP_LOG_ERRORS, pdf_loss_map_figs
+                    ):
+                        fig.savefig(os.path.join(pdf_loss_maps_dir, f"loss_t{t_i}.pdf"))
+                
+                # save mean spatial loss as .pt files also
+                torch.save(
+                    mean_spatial_loss.cpu(),
+                    os.path.join(wandb.run.dir, f"level_{i}_mean_spatial_loss.pt"),
+                )
 
         self.spatial_loss_maps.clear()
 
