@@ -125,7 +125,7 @@ class BufferList(nn.Module):
         return (self[i] for i in range(len(self)))
 
 
-def load_graph(graph_name, device="cpu"):
+def load_graph(graph_name, coarse2fine=None, device="cpu"):
     """
     Load all tensors representing the graph
     """
@@ -222,12 +222,13 @@ def load_graph(graph_name, device="cpu"):
             mesh_down_features,
         ) = ([], [], [], [])
 
-    c2f_fn = "coarse2fine_edge_index.pt"
-    c2f_path = os.path.join(graph_dir_path, c2f_fn)
-    if os.path.exists(c2f_path):
-        coarse2fine_edge_index = loads_file("coarse2fine_edge_index.pt")
-    else:
-        coarse2fine_edge_index = torch.tensor([])
+    coarse2fine_edge_index = torch.tensor([])
+    if coarse2fine:
+        c2f_fn = f"{coarse2fine}_edge_index.pt"
+        c2f_path = os.path.join(graph_dir_path, c2f_fn)
+        print(f"Loading coarse2fine edge index from {c2f_path}")
+        if os.path.exists(c2f_path):
+            coarse2fine_edge_index = loads_file(c2f_fn)
 
     return hierarchical, {
         "g2m_edge_index": g2m_edge_index,

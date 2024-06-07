@@ -8,7 +8,7 @@ import torch
 import xarray as xr
 
 # First party
-from era5_data_proc import uk_subset, uk_small_subset, uk_big_subset, open_file
+from era5_data_proc import uk_subset, uk_small_subset, uk_big_subset, uk_max_subset, open_file
 from neural_lam.constants import ERA5UKConstants
 
 def era5_static_features(grid_xy, dataset, coarsen=None):
@@ -33,6 +33,8 @@ def era5_static_features(grid_xy, dataset, coarsen=None):
             subset = uk_small_subset
         elif "era5_uk_big" in dataset:
             subset = uk_big_subset
+        elif "era5_uk_max" in dataset:
+            subset = uk_max_subset
         static_data = subset(static_data)
         
     static_data = static_data.sel(time=static_data['time'].values[0]).to_array().values # (N_var, N_y, N_x)

@@ -37,6 +37,7 @@ class MultiARModel(pl.LightningModule):
         # Does not need to attend to any other model
         args.dataset = args.dataset_names[0]
         args.graph = args.graphs[0]
+        args.coarse2fine = args.coarse2fine_edges[0]
         args.is_first_model = True
         self.models.append(AttentionLAM(args))
         
@@ -44,6 +45,7 @@ class MultiARModel(pl.LightningModule):
         for i in range(1, self.n_levels):
             args.dataset = args.dataset_names[i]
             args.graph = args.graphs[i]
+            args.coarse2fine = args.coarse2fine_edges[i]
             self.models.append(
                 AttentionLAM(args)
             )

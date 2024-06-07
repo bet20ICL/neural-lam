@@ -290,38 +290,55 @@ def main():
     if args.dataset == "era5_uk_big_small":
         args.dataset_names = ["era5_uk_big_coarse", "era5_uk_small"]
         args.graphs = ["uk_big_coarse_ico", "uk_small_ico"]
+        args.coarse2fine_edges = [None, "big_coarse2fine"]
         
-        train_set = ERA5MultiResolutionDataset(
-            args.dataset_names,
-            pred_length=args.ar_steps,
-            split="train",
-            standardize=bool(args.standardize),
-            args=args,
-        )
-        val_set = ERA5MultiResolutionDataset(
-            args.dataset_names,
-            pred_length=28,
-            split="val",
-            standardize=bool(args.standardize),
-            args=args,
-        )
-        args.constants = ERA5UKConstants
+    elif args.dataset == "era5_uk_big_small_v2":
+        args.dataset_names = ["era5_uk_big_coarse", "era5_uk_small"]
+        args.graphs = ["uk_big_coarse_ico", "uk_small_ico"]
+        args.coarse2fine_edges = [None, "big_coarse2fine_v2"]
         
-        if args.load:
-            model = MultiARModel.load_from_checkpoint(args.load, args=args)
-            if args.restore_opt:
-                # Save for later
-                # Unclear if this works for multi-GPU
-                model.opt_state = torch.load(args.load)["optimizer_states"][0]
-        else:
-            # Load model parameters Use new args for model
-            model = MultiARModel(args)
-            
-        # summary = ModelSummary(model, max_depth=3)
-        # print(summary)
-        print("===== Model initialized =====")
+    elif args.dataset == "era5_uk_max_small":
+        args.dataset_names = ["era5_uk_max_coarse", "era5_uk_small"]
+        args.graphs = ["uk_max_coarse_ico", "uk_small_ico"]
+        args.coarse2fine_edges = [None, "max_coarse2fine"]
+        
+    elif args.dataset == "era5_uk_max_small_v2":
+        args.dataset_names = ["era5_uk_max_coarse", "era5_uk_small"]
+        args.graphs = ["uk_max_coarse_ico", "uk_small_ico"]
+        args.coarse2fine_edges = [None, "max_coarse2fine_v2"]
+        
     else:
         raise ValueError(f"Unknown dataset: {args.dataset}")
+    
+    train_set = ERA5MultiResolutionDataset(
+        args.dataset_names,
+        pred_length=args.ar_steps,
+        split="train",
+        standardize=bool(args.standardize),
+        args=args,
+    )
+    val_set = ERA5MultiResolutionDataset(
+        args.dataset_names,
+        pred_length=28,
+        split="val",
+        standardize=bool(args.standardize),
+        args=args,
+    )
+    args.constants = ERA5UKConstants
+    
+    if args.load:
+        model = MultiARModel.load_from_checkpoint(args.load, args=args)
+        if args.restore_opt:
+            # Save for later
+            # Unclear if this works for multi-GPU
+            model.opt_state = torch.load(args.load)["optimizer_states"][0]
+    else:
+        # Load model parameters Use new args for model
+        model = MultiARModel(args)
+        
+    # summary = ModelSummary(model, max_depth=3)
+    # print(summary)
+    print("===== Model initialized =====")
 
     # Load data
     train_loader = torch.utils.data.DataLoader(
@@ -420,6 +437,28 @@ def main():
         end_time = time.time()
         elapsed_time_mins = (end_time - start_time) / 60
         wandb.log({"time_elapsed": elapsed_time_mins})
+        
+        if "era5" in args.dataset:
+            # TODO: currently using val set for testing
+            test_set = val_set
+        else:
+            test_set = WeatherDataset(
+                args.dataset,
+                pred_length=max_pred_length,
+                split="test",
+                subsample_step=args.step_length,
+                subset=bool(args.subset_ds),
+            )
+        
+        eval_loader = torch.utils.data.DataLoader(
+            test_set,
+            args.batch_size,
+            shuffle=False,
+            num_workers=args.n_workers,
+            )
+
+        print(f"Running evaluation on {args.eval}")
+        trainer.test(model=model, dataloaders=eval_loader)
 
 
 if __name__ == "__main__":

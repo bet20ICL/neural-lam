@@ -3,7 +3,7 @@
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --time=8:00:00
+#SBATCH --time=12:00:00
 #SBATCH --account=ec249
 
 # texlive
@@ -116,4 +116,34 @@ which python
 
 # eval multimodel
 # 5716190
-python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8 --eval val --load ./saved_models/graph_lam-4x64-06_06_03-7248/min_val_loss.ckpt
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8 --eval val --load ./saved_models/graph_lam-4x64-06_06_03-7248/min_val_loss.ckpt
+
+# 5716248
+# 5716268
+# longer rollouts
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --ar_steps 12
+
+# 5716269
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 2 --epochs 2 --overfit 1
+
+# 5716279
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --ar_steps 8
+
+# BIG DATASET!
+# 5716301
+# python train_model.py --model graph_lam --dataset era5_uk_max --graph uk_max_ico --batch_size 8
+
+# 
+# uk_big_small with nearest neighbour coarse 2 fine edges
+
+# 5716311
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+
+# 5716308
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small_v2 --batch_size 8
+
+# 5716318
+# python train_multi_model.py --model graph_lam --dataset era5_uk_max_small --batch_size 8
+
+# 5716319
+# python train_multi_model.py --model graph_lam --dataset era5_uk_max_small_v2 --batch_size 8

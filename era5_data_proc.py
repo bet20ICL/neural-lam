@@ -19,6 +19,18 @@ uk_bbox = {
     "lon_min": -10,
 }
 
+def uk_max_subset(data):
+    """
+    [-20, 14, 38, 72]
+    """
+    # Slice for the longitude from 350 to 360
+    subset1 = data.sel(latitude=slice(72, 38), longitude=slice(360-20, 360))
+    # Slice for the longitude from 0 to 4
+    subset2 = data.sel(latitude=slice(72, 38), longitude=slice(0, 14))
+    # Concatenate the two subsets along the longitude dimension
+    uk_subset = xr.concat([subset1, subset2], dim='longitude')
+    return uk_subset
+
 def uk_big_subset(data):
     """
     data: xarray dataset
@@ -99,7 +111,9 @@ def save_dataset_samples(dataset, subset=None, coarsen_fn=None):
         - samples/{split}/{date}.npy
     """
     # Training Files
-    nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022*.nc')
+    nc_files = []
+    for year in ["2021", "2022"]:
+        nc_files = nc_files + glob.glob(f'{RAW_ERA5_PATH}/{year}*.nc')
     nc_files.sort()
     proccessed_dataset_path = f"data/{dataset}/samples/train"
     os.makedirs(proccessed_dataset_path, exist_ok=True)
@@ -194,7 +208,9 @@ def _save_dataset_samples(dataset, subset=None):
         - samples/{split}/{date}.npy
     """
     # Training Files
-    nc_files = glob.glob(f'{RAW_ERA5_PATH}/2022*.nc')
+    nc_files = []
+    for year in ["2021", "2022"]:
+        nc_files = nc_files + glob.glob(f'{RAW_ERA5_PATH}/{year}*.nc')
     proccessed_dataset_path = f"data/{dataset}/samples/train"
     os.makedirs(proccessed_dataset_path, exist_ok=True)
     for j, filepath in enumerate(nc_files):
@@ -226,17 +242,22 @@ def make_global_dataset(coarsen=None):
 if __name__ == "__main__":
     # make_global_dataset()
     
-    name = "new_era5_uk"
-    subset = uk_subset
-    save_dataset_samples(name, subset=subset)
-    create_xy(name, subset=subset)
+    # name = "era5_uk"
+    # subset = uk_subset
+    # save_dataset_samples(name, subset=subset)
+    # create_xy(name, subset=subset)
     
-    name = "new_era5_uk_big"
-    subset = uk_big_subset
-    save_dataset_samples(name, subset=subset)
-    create_xy(name, subset=subset)
+    # name = "era5_uk_big_2_years"
+    # subset = uk_big_subset
+    # save_dataset_samples(name, subset=subset)
+    # create_xy(name, subset=subset)
     
-    name = "new_era5_uk_small"
-    subset = uk_small_subset
+    # name = "era5_uk_small"
+    # subset = uk_small_subset
+    # save_dataset_samples(name, subset=subset)
+    # create_xy(name, subset=subset)
+    
+    name = "era5_uk_max"
+    subset = uk_max_subset
     save_dataset_samples(name, subset=subset)
     create_xy(name, subset=subset)
