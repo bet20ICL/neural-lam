@@ -38,7 +38,7 @@ class ARModel(pl.LightningModule):
         # Instantiate loss function
         self.loss = metrics.get_metric(args.loss)
 
-        self.step_length = args.step_length  # Number of hours per pred. step
+        self.step_length = args.step_length * 6 # Number of hours per pred. step
         self.val_metrics = {
             "mse": [],
         }

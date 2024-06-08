@@ -63,6 +63,7 @@ class WeatherDataset(torch.utils.data.Dataset):
 
         self.sample_length = pred_length + 2  # 2 init states
         self.subsample_step = subsample_step
+        # N_t' = 65
         self.original_sample_length = (
             65 // self.subsample_step
         )  # 21 for 3h steps

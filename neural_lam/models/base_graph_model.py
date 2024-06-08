@@ -72,7 +72,8 @@ class BaseGraphModel(ARModel):
         # Load graph with static features
         # NOTE: (IMPORTANT!) mesh nodes MUST have the first
         # num_mesh_nodes indices,
-        self.hierarchical, graph_ldict = utils.load_graph(graph, self.args.coarse2fine)
+        coarse2fine = getattr(self.args, 'coarse2fine', None)
+        self.hierarchical, graph_ldict = utils.load_graph(graph, coarse2fine)
         for name, attr_value in graph_ldict.items():
             # Make BufferLists module members and register tensors as buffers
             if isinstance(attr_value, torch.Tensor):

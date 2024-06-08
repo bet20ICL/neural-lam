@@ -21,9 +21,12 @@ class ERA5UKDataset(torch.utils.data.Dataset):
     """
     def __init__(
         self,
-        dataset_name, 
+        dataset_name,
+        pattern="*.npy",
         pred_length=28, 
         split="train", 
+        year=2022,
+        month=None,
         subsample_step=1,
         standardize=False,
         subset=False,
@@ -33,45 +36,35 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         super().__init__()
         assert split in ("train", "val", "test"), "Unknown dataset split"
         self.sample_dir_path = os.path.join("data", dataset_name, "samples", split)
-
         self.args = args
         self.split = split
-        self.sample_length = pred_length + 2 # 2 init states
         self.subsample_step = subsample_step
-        
-        if split == "train":
-            pattern = "*.npy" if args and args.two_years else "2022*.npy"
+        # 2 init states, pred_length target states
+        self.sample_length = (pred_length + 2) * self.subsample_step
+
+        pattern = f"{year}{pattern}"
+        if self.split == "train":
             sample_paths = glob.glob(os.path.join(self.sample_dir_path, pattern))
-            # e.g. n = '20200101000000.npy'
+            # example name: '20200101000000.npy'
             self.sample_names = [os.path.basename(path) for path in sample_paths] 
             self.sample_names.sort()
-            self.sample_names = self.sample_names[::subsample_step]
             self.sample_times = [dt.datetime.strptime(n, '%Y%m%d%H%M%S.npy') for n in self.sample_names]
-            self.length = len(self.sample_names) - self.sample_length + 1
-            
-        elif split == "val":
-            self.val_months = constants.ERA5UKConstants.VAL_MONTHS
-            self.val_samples = []
-            self.month_samples = {}
-            self.month_sample_times = {}
 
-            for month in self.val_months:
-                month_dir = os.path.join(self.sample_dir_path, month)
-                sample_paths = glob.glob(os.path.join(month_dir, "*.npy"))
-                sample_names = [os.path.join(month, os.path.basename(path)) for path in sample_paths]
-                sample_names.sort()
-                sample_names = sample_names[::subsample_step]
-                # e.g. n = "01/20230101000000.npy"
-                sample_times = [dt.datetime.strptime(n[3:], '%Y%m%d%H%M%S.npy') for n in sample_names]
-                self.month_samples[month] = sample_names
-                self.month_sample_times[month] = sample_times
-                n_samples = len(sample_names) - self.sample_length + 1
-                for i in range(n_samples):
-                    self.val_samples.append((month, i))
-                self.length = len(self.val_samples)
+        else:
+            assert month is not None, "Month must be specified for validation/test dataset"
+            month_dir = os.path.join(self.sample_dir_path, month)
+            sample_paths = glob.glob(os.path.join(month_dir, pattern))
+            self.sample_names = [os.path.join(month, os.path.basename(path)) for path in sample_paths]
+            self.sample_names.sort()
+            self.sample_times = [dt.datetime.strptime(n[3:], '%Y%m%d%H%M%S.npy') for n in self.sample_names]
 
         if subset:
             self.sample_names = self.sample_names[:50] # Limit to 50 samples
+        self.length = len(self.sample_names) - self.sample_length + 1
+        
+        assert (
+            self.length > 0
+        ), "Requesting too long time series samples"
 
         # Set up for standardization
         self.standardize = standardize
@@ -96,21 +89,15 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         return full_sample
     
     def __getitem__(self, idx):
-        # validation dataset has different structure
-        if self.split == "val":
-            month, idx = self.val_samples[idx]
-            self.sample_names = self.month_samples[month]
-            self.sample_times = self.month_sample_times[month]
-        
         # === Sample ===
         prev_prev_state = self._get_sample(self.sample_names[idx])
-        prev_state = self._get_sample(self.sample_names[idx+1])        
+        prev_state = self._get_sample(self.sample_names[idx+self.subsample_step])        
 
         # N_grid = N_x * N_y; d_features = N_vars * N_levels
         init_states = torch.stack((prev_prev_state, prev_state), dim=0) # (2, N_grid, d_features)
         
         target_states = []
-        for i in range(2, self.sample_length):
+        for i in range(2*self.subsample_step, self.sample_length, self.subsample_step):
             target_states.append(self._get_sample(self.sample_names[idx+i]))
         target_states = torch.stack(target_states, dim=0) # (sample_len-2, N_grid, d_features)
         
@@ -121,7 +108,7 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         
         # === Forcing features ===
         # Each step is 6 hours long
-        hour_inc = torch.arange(self.sample_length) * 6 * self.subsample_step # (sample_len,)
+        hour_inc = torch.arange(self.sample_length // self.subsample_step) * 6 * self.subsample_step # (sample_len,)
         init_dt = self.sample_times[idx]
         
         init_hour = init_dt.hour
@@ -162,6 +149,51 @@ class ERA5UKDataset(torch.utils.data.Dataset):
         
         return init_states, target_states, forcing
     
+def era5_dataset(
+    dataset_name,
+    pattern="*.npy",
+    pred_length=28, 
+    split="train", 
+    year=2022,
+    subsample_step=1,
+    standardize=False,
+    subset=False,
+    control_only=False,
+    args=None,
+):
+    if split == "train":
+        return ERA5UKDataset(
+            dataset_name,
+            pattern=pattern,
+            pred_length=pred_length, 
+            split=split, 
+            year="2022",
+            subsample_step=subsample_step,
+            standardize=standardize,
+            subset=subset,
+            control_only=control_only,
+            args=args,
+        )
+    else:
+        datasets = []
+        for month in constants.ERA5UKConstants.VAL_MONTHS:
+            datasets.append(
+                ERA5UKDataset(
+                    dataset_name,
+                    pattern=pattern,
+                    pred_length=pred_length, 
+                    split=split, 
+                    year="2023",
+                    month=month,
+                    subsample_step=subsample_step,
+                    standardize=standardize,
+                    subset=subset,
+                    control_only=control_only,
+                    args=args,
+                )
+            )
+        return torch.utils.data.ConcatDataset(datasets)
+    
 class ERA5MultiResolutionDataset(torch.utils.data.Dataset):
     """
     ERA5 UK dataset
@@ -191,7 +223,7 @@ class ERA5MultiResolutionDataset(torch.utils.data.Dataset):
         self.datasets = []
         self.grid_sizes = []
         for dataset_name in dataset_names:
-            dataset = ERA5UKDataset(
+            dataset = era5_dataset(
                 dataset_name, 
                 pred_length=pred_length, 
                 split=split, 
@@ -225,4 +257,66 @@ class ERA5MultiResolutionDataset(torch.utils.data.Dataset):
         # init_states = torch.stack(init_states, dim=0)
         # target_states = torch.stack(target_states, dim=0)
         # forcing = torch.stack(forcing, dim=0)
+        return init_states, target_states, forcing
+    
+class ERA5MultiTimeDataset(torch.utils.data.Dataset):
+    """
+    ERA5 UK dataset
+    
+    N_t' = 65
+    N_t = 65//subsample_step (= 21 for 3h steps)
+    N_x = 268 (width)
+    N_y = 238 (height)
+    N_grid = 268x238 = 63784 (total number of grid nodes)
+    d_features = 17 (d_features' = 18)
+    d_forcing = 5
+    """
+    def __init__(
+        self,
+        dataset_name, 
+        pred_length=28, 
+        split="train", 
+        subsample_steps=[2, 1],
+        standardize=False,
+        subset=False,
+        control_only=False,
+        args=None,
+    ):
+        super().__init__()
+        assert split in ("train", "val", "test"), "Unknown dataset split"
+        
+        self.datasets = []
+        self.dataset_lengths = []
+        for subsample_step in subsample_steps:
+            dataset = ERA5UKDataset(
+                dataset_name, 
+                pred_length=pred_length, 
+                split=split, 
+                subsample_step=subsample_step,
+                standardize=standardize,
+                subset=subset,
+                control_only=control_only,
+                args=args,
+            )
+            self.datasets.append(dataset)
+            self.dataset_lengths.append(dataset.length)
+        
+    def __len__(self):
+        return self.datasets[0].length
+    
+    def __getitem__(self, idx):
+        """
+        Item consists of:
+        init_states: (2, num_grid_nodes, d_features)
+        target_states: (pred_steps, num_grid_nodes, d_features)
+        forcing_features: (pred_steps, num_grid_nodes, d_forcing),
+            where index 0 corresponds to index 1 of init_states
+        """
+        init_states, target_states, forcing = [], [], []
+        for dataset in self.datasets:
+            init_states_, target_states_, forcing_ = dataset[idx]
+            init_states.append(init_states_)
+            target_states.append(target_states_)
+            forcing.append(forcing_)
+        
         return init_states, target_states, forcing

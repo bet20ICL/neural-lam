@@ -14,7 +14,7 @@ from neural_lam import constants, metrics, utils, vis
 from neural_lam.models.graph_lam import GraphLAM
 from neural_lam.models.attention_lam import AttentionLAM
 
-class MultiARModel(pl.LightningModule):
+class MultiTimeModel(pl.LightningModule):
     """
     Generic auto-regressive weather model.
     Abstract class that can be extended.
@@ -96,7 +96,7 @@ class MultiARModel(pl.LightningModule):
             "interior_mask", 1.0 - self.border_mask, persistent=False
         )  # (num_grid_nodes, 1), 1 for non-border
 
-        self.step_length = args.step_length * 6 # Number of hours per pred. step
+        self.step_length = args.step_length  # Number of hours per pred. step
         self.val_metrics = [
             {"mse": [],}
             for _ in range(self.n_levels)
@@ -183,55 +183,167 @@ class MultiARModel(pl.LightningModule):
         
         return [coarse_grid, fine_grid], [coarse_std, fine_std]
         # raise NotImplementedError("No prediction step implemented")
+        
+        
+    def unroll_2_levels(self, init_states, forcing_features, true_states):
+        # total number of steps in rollout
+        # nice numbers are 8, 12 
+        pred_steps = forcing_features[-1].shape[1]
+        
+        self.resolutions = [2, 1] 
+        n_levels = len(self.resolutions)
+        prev_prev_state = 
+        latent_state_per_resolution = [
+            [] for _ in self.resolutions[:-1] # don't store the latent state of the last level
+        ]
+        prediction_list = []
+        for i in range(len(pred_steps)):
+            if i % 2 == 0:
+                mesh_state = self.models[0].predict_step(
+                    prev_prev_state[0],
+                    prev_state[0],
+                    forcing_features[0][i // 2],
+                )
+                latent_state_per_resolution[0].append(mesh_state)
+                prev_prev_state[0] = prev_state[0]
+            
+            grid_state = self.models[1].predict_step(
+                prev_prev_state[1],
+                prev_state[1],
+                forcing_features[0][i],
+                latent_state_per_resolution[0][-1],
+            )
+            
+            prev_prev_state[1] = prev_state[1]
+            prev_state[0] = grid_state
+            prev_state[1] = grid_state
+            prediction_list.append(grid_state)
+
+        return prediction, pred_std
+    
+    def unroll_3_levels(self, init_states, forcing_features, true_states):
+        # # total number of steps in rollout
+        # # nice numbers are 8, 12 
+        # pred_steps = forcing_features[-1].shape[1]
+        
+        # resolutions = [4, 2, 1] 
+        # # self.resolutions 
+        # latent_state_per_resolution = [
+        #     [] for _ in resolutions[:-1] # don't store the latent state of the last level
+        # ]
+        # prediction_list = []
+        # for i in range(len(pred_steps)):
+        #     for j, r in enumerate(resolutions):
+        #         # run model every r time steps
+        #         if i % r == 0:
+        #             mesh_state = self.models[j].predict_step(
+        #                 prev_prev_state[r],
+        #                 prev_state[r],
+        #                 forcing_features[r][i // r],
+                        
+        #             )
+        #             latent_state_per_resolution[r].append(mesh_state)
+        #             prev_prev_state[r] = prev_state[r]
+        
+        #     if i % 4 == 0:
+        #         mesh_state = self.models[0].predict_step(
+        #             prev_prev_state[0],
+        #             prev_state[0],
+        #             forcing_features[0][i // 4],
+        #         )
+        #         latent_state_per_resolution[0].append(mesh_state)
+        #         prev_prev_state[0] = prev_state[0]
+        #         # prev_state[0] updated at the end of loop 
+                
+        #     if i % 2 == 0:
+        #         mesh_state = self.models[1].predict_step(
+        #             prev_prev_state[1],
+        #             prev_state[1],
+        #             forcing_features[0][i // 2],
+        #             latent_state_per_resolution[0][-1],
+        #         )
+        #         latent_state_per_resolution[1].append(mesh_state)
+        #         prev_prev_state[1] = prev_state[1]
+        #         # prev_state[1] updated at the end of loop
+                
+        #     grid_state = self.models[2].predict_step(
+        #         prev_prev_state[2],
+        #         prev_state[2],
+        #         forcing_features[0][i],
+        #         latent_state_per_resolution[1][-1],
+        #     )
+        #     prev_prev_state[2] = prev_state[2]
+        #     for r in resolutions:
+        #         if i % r == 0:
+        #             prev_state[r] = grid_state
+            
+        #     prediction_list.append(grid_state)
+        
+        # n_levels = len(init_states)
+        # prev_prev_state = [init_states[i][:, 0] for i in range(n_levels)]
+        # prev_state = [init_states[i][:, 1] for i in range(n_levels)]
+        # pred_steps = forcing_features[0].shape[1]
+        
+        # prediction_per_level = [[] for _ in range(n_levels)]
+        # # pred_std_per_level = [[] for _ in range(n_levels)]
+        # pred_std_per_level = [None for _ in range(n_levels)]
+        
+
+        # for i in range(pred_steps):
+        #     forcing = [forcing_features[j][:, i] for j in range(n_levels)]
+
+        #     pred_state, pred_std = self.predict_step(
+        #         prev_state, prev_prev_state, forcing
+        #     )
+        #     # pred_state: (B, num_grid_nodes, d_f) * n_levels
+        #     # pred_std: (B, num_grid_nodes, d_f) * n_levels or None * n_levels
+
+        #     for j in range(n_levels):
+        #         prediction_per_level[j].append(pred_state[j])
+        #         # pred_std_per_level[j].append(pred_std[j])
+        #         pred_std_per_level[j] = pred_std[j]
+                 
+        #     # Update conditioning states
+        #     prev_prev_state = prev_state
+        #     prev_state = pred_state
+            
+        # prediction = [
+        #     torch.stack(
+        #         prediction_per_level[i], dim=1
+        #     ) # (B, pred_steps, num_grid_nodes, d_f)
+        #     for i in range(n_levels)
+        # ]
+        # # pred_std = [
+        # #     torch.stack(
+        # #         pred_std_per_level[i], dim=1
+        # #     )
+        # #     for i in range(n_levels)
+        # # ]
+        # return prediction, pred_std
+        raise NotImplementedError("No prediction step implemented")
+
 
     def unroll_prediction(self, init_states, forcing_features, true_states):
         """
         Roll out prediction taking multiple autoregressive steps with model
         init_states: (B, 2, num_grid_nodes, d_f)
         forcing_features: (B, pred_steps, num_grid_nodes, d_static_f)
-        true_states: (B, pred_steps, num_grid_nodes, d_f)
-        """
-        n_levels = len(init_states)
-        prev_prev_state = [init_states[i][:, 0] for i in range(n_levels)]
-        prev_state = [init_states[i][:, 1] for i in range(n_levels)]
-        pred_steps = forcing_features[0].shape[1]
+        true_states: list of tensors with shape (B, pred_steps, num_grid_nodes, d_f)
         
-        prediction_per_level = [[] for _ in range(n_levels)]
-        # pred_std_per_level = [[] for _ in range(n_levels)]
-        pred_std_per_level = [None for _ in range(n_levels)]
-
-        for i in range(pred_steps):
-            forcing = [forcing_features[j][:, i] for j in range(n_levels)]
-
-            pred_state, pred_std = self.predict_step(
-                prev_state, prev_prev_state, forcing
-            )
-            # pred_state: (B, num_grid_nodes, d_f) * n_levels
-            # pred_std: (B, num_grid_nodes, d_f) * n_levels or None * n_levels
-
-            for j in range(n_levels):
-                prediction_per_level[j].append(pred_state[j])
-                # pred_std_per_level[j].append(pred_std[j])
-                pred_std_per_level[j] = pred_std[j]
-                 
-            # Update conditioning states
-            prev_prev_state = prev_state
-            prev_state = pred_state
-            
-        prediction = [
-            torch.stack(
-                prediction_per_level[i], dim=1
-            ) # (B, pred_steps, num_grid_nodes, d_f)
-            for i in range(n_levels)
+        [
+            (B, pred_steps // 4, num_grid_nodes, d_f) for level 0,
+            (B, pred_steps // 2, num_grid_nodes, d_f) for level 1,
+            (B, pred_steps, num_grid_nodes, d_f) for level 2,
         ]
-        # pred_std = [
-        #     torch.stack(
-        #         pred_std_per_level[i], dim=1
-        #     )
-        #     for i in range(n_levels)
-        # ]
-        return prediction, pred_std
-
+        """
+        if len(self.resolutions) == 2:
+            return self.unroll_2_levels(init_states, forcing_features, true_states)
+        
+        if len(self.resolutions) == 3:
+            return self.unroll_3_levels(init_states, forcing_features, true_states)
+        
+        raise NotImplementedError("Only 2 and 3 levels are supported")
+            
     def common_step(self, batch):
         """
         Predict on single batch

@@ -12,7 +12,11 @@
 # wandb sync ./wandb/offline-run-20240605_010707-quuqnj4b
 # wandb sync ./wandb/offline-run-20240605_010707-0nrcaz9f
 
-# new time resolution
-wandb sync ./wandb/offline-run-20240605_200317-twt1dqiq
-wandb sync ./wandb/offline-run-20240605_200128-kr3r537b
+# # new time resolution
+# wandb sync ./wandb/offline-run-20240605_200317-twt1dqiq
+# wandb sync ./wandb/offline-run-20240605_200128-kr3r537b
 
+# new time resolution
+wandb sync ./wandb/offline-run-20240607_233313-15gl53gn
+wandb sync ./wandb/offline-run-20240608_015115-cn21mjx7
+wandb sync ./wandb/offline-run-20240608_020323-q8pr3ftl

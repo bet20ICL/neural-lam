@@ -19,7 +19,7 @@ from neural_lam.models.gat_lam import GATLAM
 from neural_lam.models.stats_model import StatsModel
 
 from neural_lam.weather_dataset import WeatherDataset
-from neural_lam.era5_dataset import ERA5UKDataset
+from neural_lam.era5_dataset import era5_dataset
 from neural_lam.constants import MEPSConstants, ERA5UKConstants
 
 import os
@@ -175,7 +175,7 @@ def get_args(default=False):
     parser.add_argument(
         "--step_length",
         type=int,
-        default=1,
+        default=6,
         help="Step length in hours to consider single time step 1-3 "
         "(default: 3)",
     )
@@ -290,7 +290,7 @@ def main():
     seed.seed_everything(args.seed)
     
     if "era5" in args.dataset:
-        train_set = ERA5UKDataset(
+        train_set = era5_dataset(
             args.dataset,
             pred_length=args.ar_steps,
             split="train",
@@ -298,7 +298,7 @@ def main():
             args=args,
             subsample_step=args.step_length,
         )
-        val_set = ERA5UKDataset(
+        val_set = era5_dataset(
             args.dataset,
             pred_length=28,
             split="val",
@@ -450,7 +450,28 @@ def main():
         end_time = time.time()
         elapsed_time_mins = (end_time - start_time) / 60
         wandb.log({"time_elapsed": elapsed_time_mins})
+        
+        if "era5" in args.dataset:
+            # TODO: currently using val set for testing
+            test_set = val_set
+        else:
+            test_set = WeatherDataset(
+                args.dataset,
+                pred_length=max_pred_length,
+                split="test",
+                subsample_step=args.step_length,
+                subset=bool(args.subset_ds),
+            )
+        
+        eval_loader = torch.utils.data.DataLoader(
+            test_set,
+            args.batch_size,
+            shuffle=False,
+            num_workers=args.n_workers,
+            )
 
+        print(f"Running evaluation on {args.eval}")
+        trainer.test(model=model, dataloaders=eval_loader)
 
 if __name__ == "__main__":
     main()

@@ -147,3 +147,15 @@ which python
 
 # 5716319
 # python train_multi_model.py --model graph_lam --dataset era5_uk_max_small_v2 --batch_size 8
+
+# 5717247
+# test dataset refactor didnt break anything
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 1
+
+# 5717254
+# test dataset refactor allows more training data for larger step length
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 2
+
+# 5717255
+# test dataset refactor allows more training data for larger step length
+python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 4
