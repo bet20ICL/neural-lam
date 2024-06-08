@@ -50,6 +50,12 @@ class MultiARModel(pl.LightningModule):
                 AttentionLAM(args)
             )
 
+
+        # ======================================================
+        # TODO: Remove this
+        # Data loading is not necessary for Multi AR Model 
+        # Each submodel will load its own data
+        
         # Load static features for grid/data
         static_data_dict = utils.load_static_data(args.dataset, args=args)
         for static_data_name, static_data_tensor in static_data_dict.items():
@@ -87,6 +93,7 @@ class MultiARModel(pl.LightningModule):
             + grid_static_dim
             + (self.constants.GRID_FORCING_DIM if not args.no_forcing else 0)
         )
+        # ======================================================
 
         # Instantiate loss function
         self.loss = metrics.get_metric(args.loss)
@@ -224,6 +231,8 @@ class MultiARModel(pl.LightningModule):
             ) # (B, pred_steps, num_grid_nodes, d_f)
             for i in range(n_levels)
         ]
+        
+        # TODO: fix this logic when self.output_std is implemented
         # pred_std = [
         #     torch.stack(
         #         pred_std_per_level[i], dim=1
