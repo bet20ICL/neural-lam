@@ -169,39 +169,39 @@ class MultiTimeModel(ARModel):
         
         raise NotImplementedError("Only 2 and 3 levels are supported")
             
-            
+    
     # TODO: these methods need to be overridden to unwrap target
     # when loading from multitime dataset the target is wrapped in a list for some fucking reason
-    def common_step(self, batch):
+    def unwrap_batch(self, batch):
         """
-        Predict on single batch
-        batch consists of:
-        init_states: (B, 2, num_grid_nodes, d_features)
-        target_states: (B, pred_steps, num_grid_nodes, d_features)
-        forcing_features: (B, pred_steps, num_grid_nodes, d_forcing),
-            where index 0 corresponds to index 1 of init_states
+        Unwrap batch into initial states, forcing features, and true states
         """
-        (
-            init_states,
-            target_states,
-            forcing_features,
-        ) = batch
+        prediction, target, forcing = batch
+        if isinstance(target, list):
+            target = target[-1]
 
-        prediction, pred_std = self.unroll_prediction(
-            init_states, forcing_features, target_states
-        )  # (B, pred_steps, num_grid_nodes, d_f)
-        # prediction: (B, pred_steps, num_grid_nodes, d_f)
-        # pred_std: (B, pred_steps, num_grid_nodes, d_f) or (d_f,)
-
-        # Target states is a list
-        # The last tensor is the highest resolution
-        return prediction, target_states[-1], pred_std
+        batch = (prediction, target, forcing)
+        return batch
     
+    def training_step(self, batch):
+        """
+        Train on single batch
+        """
+        batch = self.unwrap_batch(batch)
+        return super().training_step(batch)
+    
+    # pylint: disable-next=unused-argument
+    def validation_step(self, batch, batch_idx):
+        """
+        Run test on single batch
+        """
+        batch = self.unwrap_batch(batch)
+        return super().validation_step(batch, batch_idx)
+        
     # pylint: disable-next=unused-argument
     def test_step(self, batch, batch_idx):
         """
         Run test on single batch
         """
-        prediction, target, forcing = batch
-        batch = (prediction, target[-1], forcing)
+        batch = self.unwrap_batch(batch)
         return super().test_step(batch, batch_idx)
