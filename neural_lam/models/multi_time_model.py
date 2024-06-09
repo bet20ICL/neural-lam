@@ -169,6 +169,9 @@ class MultiTimeModel(ARModel):
         
         raise NotImplementedError("Only 2 and 3 levels are supported")
             
+            
+    # TODO: these methods need to be overridden to unwrap target
+    # when loading from multitime dataset the target is wrapped in a list for some fucking reason
     def common_step(self, batch):
         """
         Predict on single batch
@@ -193,3 +196,12 @@ class MultiTimeModel(ARModel):
         # Target states is a list
         # The last tensor is the highest resolution
         return prediction, target_states[-1], pred_std
+    
+    # pylint: disable-next=unused-argument
+    def test_step(self, batch, batch_idx):
+        """
+        Run test on single batch
+        """
+        prediction, target, forcing = batch
+        batch = (prediction, target[-1], forcing)
+        return super().test_step(batch, batch_idx)

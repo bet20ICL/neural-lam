@@ -24,6 +24,8 @@ class AttentionLAM(GraphLAM):
         ), "GraphLAM does not use a hierarchical mesh graph"
         
         self.is_first_model = args.is_first_model
+        self.mesh_residual = getattr(args, "mesh_residual", None)
+        self.attention_first = getattr(args, "attention_first", None)
         # mesh_dim = self.mesh_static_features.shape[1]
         if not self.is_first_model:
             self.attention_layer = TransformerConv(
@@ -96,14 +98,35 @@ class AttentionLAM(GraphLAM):
         mesh_rep = self.g2m_gnn(
             grid_emb, mesh_emb_expanded, g2m_emb_expanded
         )  # (B, num_mesh_nodes, d_h)
-
-        # Run processor step
-        mesh_rep = self.process_step(mesh_rep)
         
-        if not self.is_first_model:
-            # coarse_mesh_rep: (B, num_coarse_mesh_nodes, d_h)
-            mesh_rep = self.cross_attention(mesh_rep, coarse_mesh_rep)
-            # and possibly more message passing steps here
+        if self.attention_first:
+            # Attention Step
+            if not self.is_first_model:
+                # coarse_mesh_rep: (B, num_coarse_mesh_nodes, d_h)
+                mesh_att = self.cross_attention(mesh_rep, coarse_mesh_rep)
+                # and possibly more message passing steps here
+                if self.mesh_residual:
+                    mesh_rep = mesh_rep + mesh_att
+                else:
+                    mesh_rep = mesh_att
+
+            # Run processor step
+            mesh_rep = self.process_step(mesh_rep)
+        else:
+            # Run processor step
+            mesh_rep = self.process_step(mesh_rep)
+            
+            # Attention Step
+            if not self.is_first_model:
+                # coarse_mesh_rep: (B, num_coarse_mesh_nodes, d_h)
+                mesh_att = self.cross_attention(mesh_rep, coarse_mesh_rep)
+                # and possibly more message passing steps here
+                if self.mesh_residual:
+                    mesh_rep = mesh_rep + mesh_att
+                else:
+                    mesh_rep = mesh_att
+            
+            
         
         if self.no_decoder:
             return mesh_rep
