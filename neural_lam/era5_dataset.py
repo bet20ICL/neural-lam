@@ -237,7 +237,7 @@ class ERA5MultiResolutionDataset(torch.utils.data.Dataset):
             self.grid_sizes.append(dataset[0][0].shape[1])
         
     def __len__(self):
-        return self.datasets[0].length
+        return len(self.datasets[0])
     
     def __getitem__(self, idx):
         """

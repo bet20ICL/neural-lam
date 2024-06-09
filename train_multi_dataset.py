@@ -400,8 +400,6 @@ def main():
     print(f"Training for {epochs} epochs per dataset, total {args.epochs} epochs")
     print(f"{len(dataloaders)} datasets: {args.dataset}")
     
-    
-    logger_init = False
     if args.eval:
         if args.eval == "val":
             eval_loader = val_loader

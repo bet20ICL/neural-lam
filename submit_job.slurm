@@ -158,4 +158,12 @@ which python
 
 # 5717255
 # test dataset refactor allows more training data for larger step length
-python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 4
+# python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --step_length 4
+
+# 5718071
+# python train_model.py --model graph_lam --dataset era5_uk_big_coarse --graph uk_big_coarse_ico --batch_size 8
+
+# 5718072
+# python train_model.py --model graph_lam --dataset era5_uk_big_coarse --graph uk_big_coarse_ico --batch_size 8 --epochs 100
+
+python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8

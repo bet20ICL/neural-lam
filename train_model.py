@@ -175,7 +175,7 @@ def get_args(default=False):
     parser.add_argument(
         "--step_length",
         type=int,
-        default=6,
+        default=1,
         help="Step length in hours to consider single time step 1-3 "
         "(default: 3)",
     )
