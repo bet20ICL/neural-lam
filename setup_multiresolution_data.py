@@ -73,7 +73,7 @@ def nearest_neighbour_edges(fine_graph, coarse_graph):
     return coarse2fine_edge_index, coarse2fine_edge_set
 
 def create_border_mask():
-    full_dataset = "era5_uk_big"
+    full_dataset = "era5_uk_max"
     local_dataset = "era5_uk_small"
     full_grid = np.load(f"./data/{full_dataset}/static/nwp_xy.npy")
     local_grid = np.load(f"./data/{local_dataset}/static/nwp_xy.npy")
@@ -85,7 +85,6 @@ def create_border_mask():
     local_grid_2d = local_grid.reshape(2, -1).T
     mask = np.isin(full_grid_2d, local_grid_2d).all(axis=1)
     mask = 1.0 - mask.reshape(full_grid.shape[1:]).astype(int)
-    # np.save(f"./data/{full_dataset}/static/border_mask.npy", mask)
     np.save(f"./data/{full_dataset}/static/border_mask.npy", mask)
     
 def uk_hierarchy():
@@ -177,5 +176,5 @@ def test_subsample():
     print(y.shape)
 
 if __name__ == "__main__":
-    uk_hierarchy()
-    # create_border_mask()
+    # uk_hierarchy()
+    create_border_mask()

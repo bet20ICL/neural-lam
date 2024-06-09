@@ -26,6 +26,7 @@ from neural_lam.constants import MEPSConstants, ERA5UKConstants
 import os
 # Required for running jobs on GPU node
 os.environ["WANDB_CONFIG_DIR"] = "/work/ec249/ec249/bet20/.config/wandb"
+os.environ["MPLCONFIGDIR"] = "/work/ec249/ec249/bet20/.config/matplotlib"
 wandb_mode = os.environ.get('WANDB_MODE')
 print(f"WANDB_MODE: {wandb_mode}")
 
@@ -268,6 +269,19 @@ def get_args(default=False):
         default=1,
         help="Number of time resolution levels in model (default: 1)",
     )
+    parser.add_argument(
+        "--mesh_residual",
+        type=int,
+        default=0,
+        help="Whether to use residual connection in AttentionLAM (default: 0 (false))",
+    )
+    parser.add_argument(
+        "--attention_first",
+        type=int,
+        default=0,
+        help="Whether attention layer comes before processing layer in AttentionLAM (default: 0 (false))",
+    )
+    
     if default:
         args = parser.parse_args([])
     else:
@@ -494,6 +508,7 @@ def main():
         end_time = time.time()
         elapsed_time_mins = (end_time - start_time) / 60
         wandb.log({"time_elapsed": elapsed_time_mins})
+        wandb.log({"run_name": wandb.run.name})
         
         if "era5" in args.dataset:
             # TODO: currently using val set for testing

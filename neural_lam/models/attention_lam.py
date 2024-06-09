@@ -23,7 +23,7 @@ class AttentionLAM(GraphLAM):
             not self.hierarchical
         ), "GraphLAM does not use a hierarchical mesh graph"
         
-        self.is_first_model = args.is_first_model
+        self.is_first_model = getattr(args, "is_first_model", None)
         self.mesh_residual = getattr(args, "mesh_residual", None)
         self.attention_first = getattr(args, "attention_first", None)
         # mesh_dim = self.mesh_static_features.shape[1]

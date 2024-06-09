@@ -166,4 +166,22 @@ which python
 # 5718072
 # python train_model.py --model graph_lam --dataset era5_uk_big_coarse --graph uk_big_coarse_ico --batch_size 8 --epochs 100
 
-python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8 --epochs 5
+
+# 5719297 / 5719299
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small --batch_size 8
+
+# 5719300
+# python train_model.py --model multi_time_model --time_resolution_levels 3 --dataset era5_uk_big --graph uk_big_ico --batch_size 8
+
+# 5719301
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small_v2 --batch_size 8
+
+# 5719302 
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small_v2 --batch_size 8 --mesh_residual 1
+
+# 5719303
+# python train_multi_model.py --model graph_lam --dataset era5_uk_big_small_v2 --batch_size 8 --attention_first 1
+
+# 5719305
+python train_multi_model.py --model graph_lam --dataset era5_uk_big_small_v2 --batch_size 8 --mesh_residual 1 --attention_first 1

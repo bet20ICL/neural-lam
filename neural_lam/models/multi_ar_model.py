@@ -30,6 +30,7 @@ class MultiARModel(pl.LightningModule):
         self.args = args
         self.constants = args.constants
         self.n_levels = len(args.dataset_names)
+        self.output_std = bool(args.output_std)
         
         self.models = nn.ModuleList()
     
@@ -50,58 +51,8 @@ class MultiARModel(pl.LightningModule):
                 AttentionLAM(args)
             )
 
-
-        # ======================================================
-        # TODO: Remove this
-        # Data loading is not necessary for Multi AR Model 
-        # Each submodel will load its own data
-        
-        # Load static features for grid/data
-        static_data_dict = utils.load_static_data(args.dataset, args=args)
-        for static_data_name, static_data_tensor in static_data_dict.items():
-            self.register_buffer(
-                static_data_name, static_data_tensor, persistent=False
-            )
-
-        # Double grid output dim. to also output std.-dev.
-        self.output_std = bool(args.output_std)
-        if self.output_std:
-            self.grid_output_dim = (
-                2 * self.constants.GRID_STATE_DIM
-            )  # Pred. dim. in grid cell
-        else:
-            self.grid_output_dim = (
-                self.constants.GRID_STATE_DIM
-            )  # Pred. dim. in grid cell
-
-            # Store constant per-variable std.-dev. weighting
-            # Note that this is the inverse of the multiplicative weighting
-            # in wMSE/wMAE
-            self.register_buffer(
-                "per_var_std",
-                self.step_diff_std / torch.sqrt(self.param_weights),
-                persistent=False,
-            )
-
-        # grid_dim from data + static
-        (
-            self.num_grid_nodes,
-            grid_static_dim,
-        ) = self.grid_static_features.shape  # 63784 = 268x238
-        self.grid_dim = (
-            2 * self.constants.GRID_STATE_DIM
-            + grid_static_dim
-            + (self.constants.GRID_FORCING_DIM if not args.no_forcing else 0)
-        )
-        # ======================================================
-
         # Instantiate loss function
         self.loss = metrics.get_metric(args.loss)
-
-        # Pre-compute interior mask for use in loss function
-        self.register_buffer(
-            "interior_mask", 1.0 - self.border_mask, persistent=False
-        )  # (num_grid_nodes, 1), 1 for non-border
 
         self.step_length = args.step_length * 6 # Number of hours per pred. step
         self.val_metrics = [
@@ -109,7 +60,7 @@ class MultiARModel(pl.LightningModule):
             for _ in range(self.n_levels)
         ]
         self.test_metrics = [
-            {"mse": [],"mae": [],}
+            {"mse": [], "mae": [],}
             for _ in range(self.n_levels)
         ]
         if self.output_std:
@@ -126,6 +77,7 @@ class MultiARModel(pl.LightningModule):
         self.spatial_loss_maps = [
             [] for _ in range(self.n_levels)
         ]
+        
 
     def configure_optimizers(self):
         opt = torch.optim.AdamW(
@@ -319,16 +271,16 @@ class MultiARModel(pl.LightningModule):
         )
         return batch_loss
     
-    def on_after_backward(self):
-        # Check for unused parameters after the backward pass
-        total, used = 0, 0
-        for name, param in self.named_parameters():
-            total += 1
-            if param.grad is None:
-                print(f"Parameter {name} was not used in the backward pass.")
-            else:
-                used += 1
-        print(f"Total parameters: {total}, used: {used}")
+    # def on_after_backward(self):
+    #     # Check for unused parameters after the backward pass
+    #     total, used = 0, 0
+    #     for name, param in self.named_parameters():
+    #         total += 1
+    #         if param.grad is None:
+    #             print(f"Parameter {name} was not used in the backward pass.")
+    #         else:
+    #             used += 1
+    #     print(f"Total parameters: {total}, used: {used}")
  
 
     def all_gather_cat(self, tensor_to_gather):
@@ -394,7 +346,8 @@ class MultiARModel(pl.LightningModule):
             # Create error maps for all test metrics
             self.aggregate_and_plot_metrics(
                 self.val_metrics[i], 
-                prefix=f"level-{i}_val"
+                prefix=f"level-{i}_val",
+                level=i,
             )
 
             # Clear lists with validation metrics values
@@ -481,7 +434,7 @@ class MultiARModel(pl.LightningModule):
         #         batch, n_additional_examples, prediction=prediction, args=self.args
         #     )
 
-    def plot_examples(self, batch, n_examples, prediction=None, args=None):
+    def plot_examples(self, batch, n_examples, level, prediction=None, args=None):
         """
         (Used in test_step only)
         Plot the first n_examples forecasts from batch
@@ -497,8 +450,8 @@ class MultiARModel(pl.LightningModule):
         target = batch[1]
 
         # Rescale to original data scale
-        prediction_rescaled = prediction * self.data_std + self.data_mean
-        target_rescaled = target * self.data_std + self.data_mean
+        prediction_rescaled = prediction * self.data_std[level] + self.data_mean[level]
+        target_rescaled = target * self.data_std[level] + self.data_mean[level]
 
         # Iterate over the examples
         for pred_slice, target_slice in zip(
@@ -640,7 +593,7 @@ class MultiARModel(pl.LightningModule):
 
         return log_dict
 
-    def aggregate_and_plot_metrics(self, metrics_dict, prefix):
+    def aggregate_and_plot_metrics(self, metrics_dict, prefix, level):
         """
         Aggregate and create error map plots for all metrics in metrics_dict
 
@@ -664,7 +617,7 @@ class MultiARModel(pl.LightningModule):
                     metric_name = metric_name.replace("mse", "rmse")
 
                 # Note: we here assume rescaling for all metrics is linear
-                metric_rescaled = metric_tensor_averaged * self.data_std
+                metric_rescaled = metric_tensor_averaged * self.models[level].data_std
                 # (pred_steps, d_f)
                 log_dict.update(
                     self.create_metric_log_dict(
@@ -686,7 +639,8 @@ class MultiARModel(pl.LightningModule):
             # Create error maps for all test metrics
             self.aggregate_and_plot_metrics(
                 self.test_metrics[i], 
-                prefix=f"level-{i}_test"
+                prefix=f"level-{i}_test",
+                level=i
             )
                 
             # TODO: figure out plotting for ERA5
