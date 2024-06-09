@@ -82,7 +82,8 @@ class AttentionLAM(GraphLAM):
         # Embed all features
         grid_emb = self.grid_embedder(grid_features)  # (B, num_grid_nodes, d_h)
         g2m_emb = self.g2m_embedder(self.g2m_features)  # (M_g2m, d_h)
-        m2g_emb = self.m2g_embedder(self.m2g_features)  # (M_m2g, d_h)
+        if not self.no_decoder:
+            m2g_emb = self.m2g_embedder(self.m2g_features)  # (M_m2g, d_h)
         mesh_emb = self.embedd_mesh_nodes()
 
         # Map from grid to mesh
@@ -95,10 +96,6 @@ class AttentionLAM(GraphLAM):
         mesh_rep = self.g2m_gnn(
             grid_emb, mesh_emb_expanded, g2m_emb_expanded
         )  # (B, num_mesh_nodes, d_h)
-        # Also MLP with residual for grid representation
-        grid_rep = grid_emb + self.encoding_grid_mlp(
-            grid_emb
-        )  # (B, num_grid_nodes, d_h)
 
         # Run processor step
         mesh_rep = self.process_step(mesh_rep)
@@ -107,7 +104,15 @@ class AttentionLAM(GraphLAM):
             # coarse_mesh_rep: (B, num_coarse_mesh_nodes, d_h)
             mesh_rep = self.cross_attention(mesh_rep, coarse_mesh_rep)
             # and possibly more message passing steps here
-            
+        
+        if self.no_decoder:
+            return mesh_rep
+        
+        # Also MLP with residual for grid representation
+        grid_rep = grid_emb + self.encoding_grid_mlp(
+            grid_emb
+        )  # (B, num_grid_nodes, d_h)
+        
         # Map back from mesh to grid
         m2g_emb_expanded = self.expand_to_batch(m2g_emb, batch_size)
         grid_rep = self.m2g_gnn(

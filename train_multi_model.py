@@ -455,7 +455,7 @@ def main():
             args.batch_size,
             shuffle=False,
             num_workers=args.n_workers,
-            )
+        )
 
         print(f"Running evaluation on {args.eval}")
         trainer.test(model=model, dataloaders=eval_loader)

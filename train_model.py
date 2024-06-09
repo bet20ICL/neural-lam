@@ -17,9 +17,10 @@ from neural_lam.models.hi_lam_parallel import HiLAMParallel
 from neural_lam.models.gcn_lam import GCNLAM
 from neural_lam.models.gat_lam import GATLAM
 from neural_lam.models.stats_model import StatsModel
+from neural_lam.models.multi_time_model import MultiTimeModel
 
 from neural_lam.weather_dataset import WeatherDataset
-from neural_lam.era5_dataset import era5_dataset
+from neural_lam.era5_dataset import era5_dataset, era5_multi_time_dataset
 from neural_lam.constants import MEPSConstants, ERA5UKConstants
 
 import os
@@ -44,6 +45,7 @@ MODELS = {
     "hi_lam": HiLAM,
     "hi_lam_parallel": HiLAMParallel,
     "stats_model": StatsModel,
+    "multi_time_model": MultiTimeModel,
 }
 
 def get_args(default=False):
@@ -260,6 +262,12 @@ def get_args(default=False):
         default=0,
         help="Use border forcing (default: 0 (false))",
     )
+    parser.add_argument(
+        "--time_resolution_levels",
+        type=int,
+        default=1,
+        help="Number of time resolution levels in model (default: 1)",
+    )
     if default:
         args = parser.parse_args([])
     else:
@@ -290,22 +298,49 @@ def main():
     seed.seed_everything(args.seed)
     
     if "era5" in args.dataset:
-        train_set = era5_dataset(
-            args.dataset,
-            pred_length=args.ar_steps,
-            split="train",
-            standardize=bool(args.standardize),
-            args=args,
-            subsample_step=args.step_length,
-        )
-        val_set = era5_dataset(
-            args.dataset,
-            pred_length=28,
-            split="val",
-            standardize=bool(args.standardize),
-            args=args,
-            subsample_step=args.step_length,
-        )
+        if args.model == "multi_time_model":
+            if args.time_resolution_levels == 2:
+                args.resolutions = [2, 1]
+                args.coarse2fine_edges = [None, "m2m"]
+            elif args.time_resolution_levels == 3:
+                args.resolutions = [4, 2, 1]
+                args.coarse2fine_edges = [None, "m2m", "m2m"]
+            else:
+                raise ValueError(f"{args.time_resolution_levels} time resolution level not implemented yet :(")
+            train_set = era5_multi_time_dataset(
+                args.dataset,
+                subsample_steps=args.resolutions,
+                pred_length=args.ar_steps,
+                split="train",
+                standardize=bool(args.standardize),
+                args=args,
+            )
+            val_set = era5_multi_time_dataset(
+                args.dataset,
+                subsample_steps=args.resolutions,
+                pred_length=28,
+                split="val",
+                standardize=bool(args.standardize),
+                args=args,
+            )
+        else:
+            assert args.time_resolution_levels == 1, "Use multi_time_model for multi time resolution models"
+            train_set = era5_dataset(
+                args.dataset,
+                pred_length=args.ar_steps,
+                split="train",
+                standardize=bool(args.standardize),
+                args=args,
+                subsample_step=args.step_length,
+            )
+            val_set = era5_dataset(
+                args.dataset,
+                pred_length=28,
+                split="val",
+                standardize=bool(args.standardize),
+                args=args,
+                subsample_step=args.step_length,
+            )
         args.constants = ERA5UKConstants
     elif args.dataset == "meps_example":
         train_set = WeatherDataset(
@@ -379,6 +414,14 @@ def main():
         f"{prefix}{args.model}-{args.processor_layers}x{args.hidden_dim}-"
         f"{time.strftime('%m_%d_%H')}-{random_run_id:04d}"
     )
+    
+    callbacks = []
+    if args.model == "multi_time_model":
+        # Print out the first layer of models at all layers
+        model_summary_callback = pl.callbacks.ModelSummary(max_depth=3)
+        callbacks.append(
+            model_summary_callback
+        )
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         dirpath=f"saved_models/{run_name}",
         filename="min_val_loss",
@@ -386,6 +429,7 @@ def main():
         mode="min",
         save_last=True,
     )
+    callbacks.append(checkpoint_callback)
     logger = pl.loggers.WandbLogger(
         project=constants.WANDB_PROJECT,
         name=run_name,
@@ -400,7 +444,7 @@ def main():
         accelerator=device_name,
         logger=logger,
         log_every_n_steps=1,
-        callbacks=[checkpoint_callback],
+        callbacks=callbacks,
         check_val_every_n_epoch=args.val_interval,
         precision=args.precision,
         overfit_batches=args.overfit,

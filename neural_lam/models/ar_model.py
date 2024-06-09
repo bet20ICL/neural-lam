@@ -508,7 +508,7 @@ class ARModel(pl.LightningModule):
         for name, fig in summary_metric_curves:
             log_dict[f"{full_log_name}_{name}_rollout"] = wandb.Image(fig)
 
-        if prefix == "test":
+        if "test" in prefix:
             # Save pdf
             if metric_fig:
                 metric_fig.savefig(

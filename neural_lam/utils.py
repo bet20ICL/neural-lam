@@ -229,6 +229,8 @@ def load_graph(graph_name, coarse2fine=None, device="cpu"):
         print(f"Loading coarse2fine edge index from {c2f_path}")
         if os.path.exists(c2f_path):
             coarse2fine_edge_index = loads_file(c2f_fn)
+            if isinstance(coarse2fine_edge_index, list):
+                coarse2fine_edge_index = coarse2fine_edge_index[0]
 
     return hierarchical, {
         "g2m_edge_index": g2m_edge_index,
