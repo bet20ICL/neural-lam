@@ -86,7 +86,53 @@ class MultiTimeModel(ARModel):
         return x.unsqueeze(0).expand(batch_size, -1, -1)
             
     def unroll_2_levels(self, init_states, forcing_features, true_states):
-        raise NotImplementedError("No prediction step implemented")
+        # total number of steps in rollout
+        # nice numbers are 8, 12 
+        pred_steps = forcing_features[-1].shape[1]
+        
+        n_levels = len(self.resolutions)
+        prev_prev_state = [
+            init_states[i][:, 0] for i in range(n_levels)
+        ]
+        prev_state = [
+            init_states[i][:, 1] for i in range(n_levels)
+        ]
+        latent_state_per_resolution = [
+            [] for _ in range(n_levels - 1) # don't store the latent state of the last level
+        ]
+        prediction_list = []
+        for i in range(pred_steps):
+            if i % 2 == 0:
+                mesh_state = self.models[0].predict_step(
+                    prev_prev_state[0],
+                    prev_state[0],
+                    forcing_features[0][:, i // 2],
+                )
+                latent_state_per_resolution[0].append(mesh_state)
+                prev_prev_state[0] = prev_state[0]
+
+            
+            grid_state, _, _ = self.models[1].predict_step(
+                prev_prev_state[1],
+                prev_state[1],
+                forcing_features[1][:, i],
+                latent_state_per_resolution[0][-1],
+            )
+            
+            prev_prev_state[1] = prev_state[1]
+            prev_state[0] = grid_state
+            prediction_list.append(grid_state)
+            
+        prediction = torch.stack(
+            prediction_list, dim=1
+        )  # (B, pred_steps, num_grid_nodes, d_f)
+        
+        # TODO: implement this    
+        if self.output_std:
+            pass
+        pred_std = self.per_var_std
+        
+        return prediction, pred_std
     
     def unroll_3_levels(self, init_states, forcing_features, true_states):
         # total number of steps in rollout

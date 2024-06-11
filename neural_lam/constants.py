@@ -10,6 +10,8 @@ class ERA5UKConstants:
     VAL_STEP_LOG_ERRORS = np.array([1, 2, 4, 8, 16]) 
     METRICS_WATCH = [
         "val_rmse",
+        "level-0_val_rmse",
+        "level-1_val_rmse",
     ]
     VAR_LEADS_METRICS_WATCH = {
         4: [1, 2, 4, 8, 16],
@@ -24,8 +26,8 @@ class ERA5UKConstants:
     PARAM_NAMES_SHORT = PARAM_NAMES
     PARAM_UNITS = ['m**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'm**2 s**-2', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'kg kg**-1', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'K', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'm s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1', 'Pa s**-1']
     VAL_MONTHS = ["01", "04", "07", "10"]
-    # RAW_ERA5_PATH = "/work/ec249/ec249/bet20/dataset/era5/global_full"
-    RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
+    RAW_ERA5_PATH = "/work/ec249/ec249/bet20/dataset/era5/global_full"
+    # RAW_ERA5_PATH = "/vol/bitbucket/bet20/dataset/era5/global_full"
     CLIMATOLOGY = {
         "z500": 1145.023,
         "z850": 779.7801,

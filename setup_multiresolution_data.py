@@ -72,6 +72,14 @@ def nearest_neighbour_edges(fine_graph, coarse_graph):
     coarse2fine_edge_set = {tuple(e) for e in coarse2fine_edge_index.T}
     return coarse2fine_edge_index, coarse2fine_edge_set
 
+def fully_connected_edges(fine_graph, coarse_graph):
+    n_fine_mesh = torch.arange(len(fine_graph.mesh_pos))
+    n_coarse_mesh = torch.arange(len(coarse_graph.mesh_pos))
+    grid_m, grid_n = torch.meshgrid(n_coarse_mesh, n_fine_mesh, indexing='ij')
+
+    coarse2fine_edge_index = torch.stack([grid_m.reshape(-1), grid_n.reshape(-1)], dim=1).T
+    return coarse2fine_edge_index
+
 def create_border_mask():
     full_dataset = "era5_uk_max"
     local_dataset = "era5_uk_small"
@@ -155,20 +163,38 @@ def uk_hierarchy():
     fine_graph_path = f"graphs/{small_graph_name}"
     coarse_graph_path = f"graphs/{coarse_big_graph_name}"
     
-    # # Use multi_res_edges to generate edge index
-    # coarse2fine_edge_index, fine2coarse_edge_set = multi_res_edges(fine_graph, full_coarse_graph, coarse_graph)
-    # torch.save(
-    #     coarse2fine_edge_index,
-    #     os.path.join(coarse_graph_path, "coarse2fine_edge_index.pt")
-    #     # os.path.join(coarse_graph_path, "coarse2fine_edge_index_v2.pt")
-    # )
+    # Use multi_res_edges to generate edge index
+    coarse2fine_edge_index, fine2coarse_edge_set = multi_res_edges(fine_graph, full_coarse_graph, coarse_graph)
+    torch.save(
+        coarse2fine_edge_index,
+        os.path.join(coarse_graph_path, "coarse2fine_edge_index.pt")
+        # os.path.join(coarse_graph_path, "coarse2fine_edge_index_v2.pt")
+    )
     
     # Use Nearest neighbour to generate edge index
     coarse2fine_edge_index, fine2coarse_edge_set = nearest_neighbour_edges(fine_graph, coarse_graph)
     torch.save(
         coarse2fine_edge_index,
-        os.path.join(fine_graph_path, "coarse2fine_edge_index_v2.pt")
+        os.path.join(fine_graph_path, "coarse2fine_edge_v2_index.pt")
     )
+
+
+def edges_main():
+    small_dataset, small_graph_name = "era5_uk_small", "uk_small_ico"
+    coarse_big_dataset, coarse_big_graph_name = "era5_uk_big_coarse", "uk_big_coarse_ico"
+    
+    fine_graph = load_graph(small_dataset, small_graph_name)
+    coarse_graph = load_graph(coarse_big_dataset, coarse_big_graph_name)
+    
+    fine_graph_path = f"graphs/{small_graph_name}"
+    coarse_graph_path = f"graphs/{coarse_big_graph_name}"
+    
+    coarse2fine_edge_index, _ = fully_connected_edges(fine_graph, coarse_graph)
+    torch.save(
+        coarse2fine_edge_index,
+        os.path.join(fine_graph_path, "big_coarse2fine_edge_index_v3.pt")
+    )
+    
 
 def test_subsample():
     x = torch.randn(81, 81, 6, 8)
@@ -177,4 +203,5 @@ def test_subsample():
 
 if __name__ == "__main__":
     # uk_hierarchy()
-    create_border_mask()
+    # create_border_mask()
+    edges_main()

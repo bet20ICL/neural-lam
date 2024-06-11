@@ -274,6 +274,7 @@ class ARModel(pl.LightningModule):
         val_log_dict = {
             f"val_loss_unroll{step}": time_step_loss[step - 1]
             for step in self.constants.VAL_STEP_LOG_ERRORS
+            if step < len(time_step_loss)
         }
         val_log_dict["val_mean_loss"] = mean_loss
         self.log_dict(

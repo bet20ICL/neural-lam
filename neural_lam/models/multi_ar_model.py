@@ -107,7 +107,43 @@ class MultiARModel(pl.LightningModule):
         return x.unsqueeze(0).expand(batch_size, -1, -1)
 
 
-    def predict_step(
+    def predict_step_3_levels(
+        self, 
+        prev_state, 
+        prev_prev_state,
+        forcing
+    ):
+        """
+        Step state one step ahead using prediction model, X_{t-1}, X_t -> X_t+1
+        prev_state: (B, num_grid_nodes, feature_dim), X_t
+        prev_prev_state: (B, num_grid_nodes, feature_dim), X_{t-1}
+        forcing: (B, num_grid_nodes, forcing_dim)
+        
+        Output: X_t+1, std(X_t+1) or None
+        """
+        
+        # Hard coded for 2 levels at the moment
+        coarse_prev_state, fine_prev_state = prev_state
+        coarse_prev_prev_state, fine_prev_prev_state, = prev_prev_state
+        coarse_forcing, fine_forcing = forcing
+        
+        coarse_grid, coarse_std, coarse_mesh = self.models[0].predict_step(
+            coarse_prev_state,
+            coarse_prev_prev_state, 
+            coarse_forcing
+        )
+        
+        fine_grid, fine_std, _ = self.models[1].predict_step(
+            fine_prev_state, 
+            fine_prev_prev_state,
+            fine_forcing,
+            coarse_mesh, # attend to the coarse mesh
+        )
+        
+        return [coarse_grid, fine_grid], [coarse_std, fine_std]
+        # raise NotImplementedError("No prediction step implemented")
+        
+    def predict_step_2_levels(
         self, 
         prev_state, 
         prev_prev_state,
@@ -162,9 +198,12 @@ class MultiARModel(pl.LightningModule):
         for i in range(pred_steps):
             forcing = [forcing_features[j][:, i] for j in range(n_levels)]
 
-            pred_state, pred_std = self.predict_step(
-                prev_state, prev_prev_state, forcing
-            )
+            if n_levels == 2:
+                pred_state, pred_std = self.predict_step_2_levels(
+                    prev_state, prev_prev_state, forcing
+                )
+            else:
+                pass
             # pred_state: (B, num_grid_nodes, d_f) * n_levels
             # pred_std: (B, num_grid_nodes, d_f) * n_levels or None * n_levels
 

@@ -64,6 +64,11 @@ def main():
         args.graphs = ["uk_big_coarse_ico", "uk_small_ico"]
         args.coarse2fine_edges = [None, "big_coarse2fine_v2"]
         
+    elif args.dataset == "era5_uk_big_small_v3":
+        args.dataset_names = ["era5_uk_big_coarse", "era5_uk_small"]
+        args.graphs = ["uk_big_coarse_ico", "uk_small_ico"]
+        args.coarse2fine_edges = [None, "big_coarse2fine_v3"]
+        
     elif args.dataset == "era5_uk_max_small":
         args.dataset_names = ["era5_uk_max_coarse", "era5_uk_small"]
         args.graphs = ["uk_max_coarse_ico", "uk_small_ico"]
@@ -73,7 +78,6 @@ def main():
         args.dataset_names = ["era5_uk_max_coarse", "era5_uk_small"]
         args.graphs = ["uk_max_coarse_ico", "uk_small_ico"]
         args.coarse2fine_edges = [None, "max_coarse2fine_v2"]
-        
     else:
         raise ValueError(f"Unknown dataset: {args.dataset}")
     

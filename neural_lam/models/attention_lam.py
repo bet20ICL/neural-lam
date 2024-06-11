@@ -1,5 +1,6 @@
 # Third-party
 import torch
+from torch.nn import LayerNorm
 import torch_geometric as pyg
 from torch_geometric.nn import TransformerConv
 
@@ -26,12 +27,15 @@ class AttentionLAM(GraphLAM):
         self.is_first_model = getattr(args, "is_first_model", None)
         self.mesh_residual = getattr(args, "mesh_residual", None)
         self.attention_first = getattr(args, "attention_first", None)
+        self.layer_norm = getattr(args, "layer_norm", None)
         # mesh_dim = self.mesh_static_features.shape[1]
         if not self.is_first_model:
             self.attention_layer = TransformerConv(
                 in_channels=args.hidden_dim,
                 out_channels=args.hidden_dim,
             )
+            if self.layer_norm:
+                self.att_norm = LayerNorm(args.hidden_dim)
     
     def cross_attention(self, mesh_rep, coarse_mesh_rep):
         mesh_rep_batch = torch.reshape(mesh_rep, (-1, mesh_rep.shape[-1])) # (B*N_mesh, d_h)
@@ -46,12 +50,13 @@ class AttentionLAM(GraphLAM):
                 
         # TransformerConv uses 'scatter' which does not have a deterministic implementation
         torch.use_deterministic_algorithms(False)
-        mesh_rep_batch = self.attention_layer(
+        mesh_rep_batch, weights = self.attention_layer(
             (coarse_mesh_rep_batch, mesh_rep_batch),
             edge_index_batch,
+            return_attention_weights=True,
         )
         torch.use_deterministic_algorithms(True)
-
+        
         mesh_rep = mesh_rep_batch.reshape((batch_size, N_fine_mesh, mesh_rep_batch.shape[-1]))
         return mesh_rep
     
@@ -104,12 +109,15 @@ class AttentionLAM(GraphLAM):
             if not self.is_first_model:
                 # coarse_mesh_rep: (B, num_coarse_mesh_nodes, d_h)
                 mesh_att = self.cross_attention(mesh_rep, coarse_mesh_rep)
+                    
                 # and possibly more message passing steps here
                 if self.mesh_residual:
                     mesh_rep = mesh_rep + mesh_att
                 else:
                     mesh_rep = mesh_att
 
+                if self.layer_norm:
+                    mesh_rep = self.att_norm(mesh_rep)
             # Run processor step
             mesh_rep = self.process_step(mesh_rep)
         else:
@@ -120,14 +128,16 @@ class AttentionLAM(GraphLAM):
             if not self.is_first_model:
                 # coarse_mesh_rep: (B, num_coarse_mesh_nodes, d_h)
                 mesh_att = self.cross_attention(mesh_rep, coarse_mesh_rep)
+                    
                 # and possibly more message passing steps here
                 if self.mesh_residual:
                     mesh_rep = mesh_rep + mesh_att
                 else:
                     mesh_rep = mesh_att
+                    
+                if self.layer_norm:
+                    mesh_rep = self.att_norm(mesh_rep)
             
-            
-        
         if self.no_decoder:
             return mesh_rep
         

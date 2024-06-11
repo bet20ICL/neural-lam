@@ -1,4 +1,11 @@
 # Standard library
+import os
+# Required for running jobs on GPU node
+os.environ["WANDB_CONFIG_DIR"] = "/work/ec249/ec249/bet20/.config/wandb"
+os.environ["MPLCONFIGDIR"] = "/work/ec249/ec249/bet20/.config/matplotlib"
+wandb_mode = os.environ.get('WANDB_MODE')
+print(f"WANDB_MODE: {wandb_mode}")
+
 import random
 import time
 from argparse import ArgumentParser
@@ -23,12 +30,6 @@ from neural_lam.weather_dataset import WeatherDataset
 from neural_lam.era5_dataset import era5_dataset, era5_multi_time_dataset
 from neural_lam.constants import MEPSConstants, ERA5UKConstants
 
-import os
-# Required for running jobs on GPU node
-os.environ["WANDB_CONFIG_DIR"] = "/work/ec249/ec249/bet20/.config/wandb"
-os.environ["MPLCONFIGDIR"] = "/work/ec249/ec249/bet20/.config/matplotlib"
-wandb_mode = os.environ.get('WANDB_MODE')
-print(f"WANDB_MODE: {wandb_mode}")
 
 # # Access SLURM_NTASKS environment variable
 # ntasks = os.getenv('SLURM_NTASKS')
@@ -281,6 +282,12 @@ def get_args(default=False):
         default=0,
         help="Whether attention layer comes before processing layer in AttentionLAM (default: 0 (false))",
     )
+    parser.add_argument(
+        "--layer_norm",
+        type=int,
+        default=0,
+        help="Whether to use layer normalization in AttentionLAM (default: 0 (false))",
+    )
     
     if default:
         args = parser.parse_args([])
@@ -349,7 +356,7 @@ def main():
             )
             val_set = era5_dataset(
                 args.dataset,
-                pred_length=28,
+                pred_length=28 // args.step_length,
                 split="val",
                 standardize=bool(args.standardize),
                 args=args,
@@ -528,8 +535,10 @@ def main():
             shuffle=False,
             num_workers=args.n_workers,
             )
-
-        print(f"Running evaluation on {args.eval}")
+        # print(f"Running evaluation on {args.eval} set from best checkpoint: {best_checkpoint_path}")
+        # best_checkpoint_path = checkpoint_callback.best_model_path
+        # model = model_class.load_from_checkpoint(best_checkpoint_path, args=args)
+        print(f"Running evaluation")
         trainer.test(model=model, dataloaders=eval_loader)
 
 if __name__ == "__main__":
