@@ -73,12 +73,12 @@ def nearest_neighbour_edges(fine_graph, coarse_graph):
     return coarse2fine_edge_index, coarse2fine_edge_set
 
 def fully_connected_edges(fine_graph, coarse_graph):
-    n_fine_mesh = torch.arange(len(fine_graph.mesh_pos))
-    n_coarse_mesh = torch.arange(len(coarse_graph.mesh_pos))
+    n_fine_mesh = torch.arange(fine_graph.mesh_pos.shape[1])
+    n_coarse_mesh = torch.arange(coarse_graph.mesh_pos.shape[1])
     grid_m, grid_n = torch.meshgrid(n_coarse_mesh, n_fine_mesh, indexing='ij')
 
     coarse2fine_edge_index = torch.stack([grid_m.reshape(-1), grid_n.reshape(-1)], dim=1).T
-    return coarse2fine_edge_index
+    return coarse2fine_edge_index, None
 
 def create_border_mask():
     full_dataset = "era5_uk_max"
@@ -192,7 +192,7 @@ def edges_main():
     coarse2fine_edge_index, _ = fully_connected_edges(fine_graph, coarse_graph)
     torch.save(
         coarse2fine_edge_index,
-        os.path.join(fine_graph_path, "big_coarse2fine_edge_index_v3.pt")
+        os.path.join(fine_graph_path, "big_coarse2fine_v3_edge_index.pt")
     )
     
 
