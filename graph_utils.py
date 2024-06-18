@@ -11,9 +11,11 @@ class GraphData:
         g2m_edge_index, g2m_edge_set, 
         m2g_edge_index, m2g_edge_set,
         mesh_node_levels,
-        mesh_uids
+        mesh_uids,
+        grid_xy_rect
     ):
         self.grid_xy = grid_xy
+        self.grid_xy_rect = grid_xy_rect
         self.mesh_pos = mesh_pos
         self.m2m_edge_index = m2m_edge_index
         self.g2m_edge_index = g2m_edge_index
@@ -30,6 +32,7 @@ def load_graph(dataset, graph_name):
     
     # Load grid
     grid_xy = np.load(dir)
+    grid_rect = grid_xy
     print(grid_xy.shape)
     grid_xy = grid_xy.reshape(2, -1)
 
@@ -48,7 +51,7 @@ def load_graph(dataset, graph_name):
     mesh_node_levels = torch.load(os.path.join(graph_dir_path, "mesh_node_levels.pt"))
     mesh_uids = torch.load(os.path.join(graph_dir_path, "mesh_uids.pt"))
     
-    return GraphData(grid_xy, mesh_pos, m2m_edge_index, edge_set, g2m_edge_index, g2m_edge_set, m2g_edge_index, m2g_edge_set, mesh_node_levels, mesh_uids)
+    return GraphData(grid_xy, mesh_pos, m2m_edge_index, edge_set, g2m_edge_index, g2m_edge_set, m2g_edge_index, m2g_edge_set, mesh_node_levels, mesh_uids, grid_rect)
 
 def degrees(edge_index):
     degrees = [0] * (max(edge_index[0]) + 1)
@@ -77,6 +80,7 @@ def verify_graph(graph):
     print("Mesh nodes min, max: ", m2g_edge_index[1].min(), m2g_edge_index[1].max())
     print("Grid Nodes unique:", m2g_edge_index[0].unique().shape[0])
     print("Mesh nodes unique:", m2g_edge_index[1].unique().shape[0])
+    
     
     grid_box = grid_extent(grid_xy)
     print("Grid Bounding box:")

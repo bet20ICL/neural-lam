@@ -25,6 +25,8 @@ from neural_lam.models.gcn_lam import GCNLAM
 from neural_lam.models.gat_lam import GATLAM
 from neural_lam.models.stats_model import StatsModel
 from neural_lam.models.multi_time_model import MultiTimeModel
+from neural_lam.models.attention_lam import AttentionLAM
+from neural_lam.models.attention_lam_v2 import AttentionLAMv2
 
 from neural_lam.weather_dataset import WeatherDataset
 from neural_lam.era5_dataset import era5_dataset, era5_multi_time_dataset
@@ -48,6 +50,8 @@ MODELS = {
     "hi_lam_parallel": HiLAMParallel,
     "stats_model": StatsModel,
     "multi_time_model": MultiTimeModel,
+    "attention_lam": AttentionLAM,
+    "attention_lam_v2": AttentionLAMv2,
 }
 
 def get_args(default=False):

@@ -13,6 +13,7 @@ import wandb
 from neural_lam import constants, metrics, utils, vis
 from neural_lam.models.graph_lam import GraphLAM
 from neural_lam.models.attention_lam import AttentionLAM
+from neural_lam.models.attention_lam_v2 import AttentionLAMv2
 
 class MultiARModel(pl.LightningModule):
     """
@@ -43,13 +44,16 @@ class MultiARModel(pl.LightningModule):
         self.models.append(AttentionLAM(args))
         
         args.is_first_model = False
+        
         for i in range(1, self.n_levels):
             args.dataset = args.dataset_names[i]
             args.graph = args.graphs[i]
             args.coarse2fine = args.coarse2fine_edges[i]
-            self.models.append(
-                AttentionLAM(args)
-            )
+            if args.model == "attention_lam_v2":
+                m = AttentionLAMv2(args)
+            else:
+                m = AttentionLAM(args)
+            self.models.append(m)
 
         # Instantiate loss function
         self.loss = metrics.get_metric(args.loss)

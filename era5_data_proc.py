@@ -116,6 +116,7 @@ def save_dataset_samples(dataset, subset=None, coarsen_fn=None):
         nc_files = nc_files + glob.glob(f'{RAW_ERA5_PATH}/{year}*.nc')
     nc_files.sort()
     proccessed_dataset_path = f"data/{dataset}/samples/train"
+    # Train Files
     os.makedirs(proccessed_dataset_path, exist_ok=True)
     for j, filepath in enumerate(nc_files):
         data = xr.open_dataset(filepath)
@@ -123,6 +124,14 @@ def save_dataset_samples(dataset, subset=None, coarsen_fn=None):
     
     # Validation Files
     for month in ERA5UKConstants.VAL_MONTHS:
+        filepath = f'{RAW_ERA5_PATH}/2023_{month}.nc'
+        proccessed_dataset_path = f"data/{dataset}/samples/val/{month}"
+        os.makedirs(proccessed_dataset_path, exist_ok=True)
+        data = xr.open_dataset(filepath)
+        proc_file(data, proccessed_dataset_path, subset=subset, coarsen_fn=coarsen_fn)    
+        
+    # Test Files
+    for month in ERA5UKConstants.TEST_MONTHS:
         filepath = f'{RAW_ERA5_PATH}/2023_{month}.nc'
         proccessed_dataset_path = f"data/{dataset}/samples/val/{month}"
         os.makedirs(proccessed_dataset_path, exist_ok=True)
@@ -252,10 +261,20 @@ if __name__ == "__main__":
     # save_dataset_samples(name, subset=subset)
     # create_xy(name, subset=subset)
     
-    # name = "era5_uk_small"
-    # subset = uk_small_subset
-    # save_dataset_samples(name, subset=subset)
-    # create_xy(name, subset=subset)
+    name = "era5_uk_small"
+    subset = uk_small_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)
+    
+    name = "era5_uk"
+    subset = uk_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)
+    
+    name = "era5_uk_big"
+    subset = uk_big_subset
+    save_dataset_samples(name, subset=subset)
+    create_xy(name, subset=subset)
     
     name = "era5_uk_max"
     subset = uk_max_subset

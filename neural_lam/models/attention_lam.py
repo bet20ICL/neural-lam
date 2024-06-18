@@ -42,12 +42,13 @@ class AttentionLAM(GraphLAM):
         coarse_mesh_rep_batch = torch.reshape(coarse_mesh_rep, (-1, coarse_mesh_rep.shape[-1])) # (B*N_mesh, d_h)
         N_fine_mesh, N_coarse_mesh = mesh_rep.shape[1], coarse_mesh_rep.shape[1]
         idx_offset = torch.tensor([[N_coarse_mesh], [N_fine_mesh]], device=mesh_rep.device) # (2, 1)
+        # print(idx_offset.device, self.coarse2fine_edge_index.device)
         batch_size = mesh_rep.shape[0]
         edge_index_batch = torch.cat([
             self.coarse2fine_edge_index + idx_offset * i
             for i in range(batch_size)
         ], dim=1) # (2, B*M_mesh)
-                
+
         # TransformerConv uses 'scatter' which does not have a deterministic implementation
         torch.use_deterministic_algorithms(False)
         mesh_rep_batch, weights = self.attention_layer(

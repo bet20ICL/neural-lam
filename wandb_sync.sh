@@ -16,7 +16,18 @@
 # wandb sync ./wandb/offline-run-20240605_200317-twt1dqiq
 # wandb sync ./wandb/offline-run-20240605_200128-kr3r537b
 
-# new time resolution
-wandb sync ./wandb/offline-run-20240607_233313-15gl53gn
-wandb sync ./wandb/offline-run-20240608_015115-cn21mjx7
-wandb sync ./wandb/offline-run-20240608_020323-q8pr3ftl
+# # new time resolution
+# wandb sync ./wandb/offline-run-20240607_233313-15gl53gn
+# wandb sync ./wandb/offline-run-20240608_015115-cn21mjx7
+# wandb sync ./wandb/offline-run-20240608_020323-q8pr3ftl
+
+# wandb sync ./wandb/offline-run-20240607_032059-w4yi6ek4
+# wandb sync ./wandb/offline-run-20240607_032004-jsphwhvf
+# wandb sync ./wandb/offline-run-20240607_033537-ghutnlwk
+# wandb sync ./wandb/offline-run-20240607_033812-4uiaele1
+
+# wandb sync ./wandb/offline-run-20240610_022856-1g5wx1zk
+# wandb sync ./wandb/offline-run-20240610_022857-kvqeou88
+# wandb sync ./wandb/offline-run-20240610_022857-wpgrdxu4
+
+# wandb sync ./wandb/offline-run-20240610_210625-na2wwhtx

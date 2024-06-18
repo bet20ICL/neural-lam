@@ -83,6 +83,8 @@ class BaseGraphModel(ARModel):
                 self.register_buffer(name, attr_value, persistent=False)
             else:
                 setattr(self, name, attr_value)
+        # if getattr(self, 'coarse2fine_edge_index', None):
+        #     print(getattr(self, 'coarse2fine_edge_index', None).device)
                 
     def _update_proccessor_graph(self):
         """

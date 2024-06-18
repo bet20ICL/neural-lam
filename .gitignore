@@ -1,3 +1,6 @@
+MNIST
+lightning_logs
+
 ### Project Specific ###
 wandb
 slurm_log*
