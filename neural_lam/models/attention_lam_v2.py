@@ -31,7 +31,7 @@ class InterAttentionNet(pl.LightningModule):
         if hidden_dim is None:
             # Default to input dim if not explicitly given
             hidden_dim = input_dim
-        self.coarse2fine_edge_index = c2f_edge_index
+        self.register_buffer("coarse2fine_edge_index", c2f_edge_index, persistent=False)
         self.layer_norm = layer_norm
         self.mesh_resid = mesh_resid
         self.attention_layer = TransformerConv(
@@ -57,29 +57,34 @@ class InterAttentionNet(pl.LightningModule):
         coarse_mesh_rep: (B, N_coarse_mesh, d_h)
         edge_rep: (M_mesh, d_h)
         """
-        mesh_rep_batch = torch.reshape(mesh_rep, (-1, mesh_rep.shape[-1]))
-        coarse_mesh_rep_batch = torch.reshape(coarse_mesh_rep, (-1, coarse_mesh_rep.shape[-1]))
+        # Flatten graphs in mini-batch into a single graph
+        # Required because TransformerConv does not support mini-batches
+        mesh_rep_batch = torch.reshape(mesh_rep, (-1, mesh_rep.shape[-1])) # (B*N_mesh, d_h)
+        coarse_mesh_rep_batch = torch.reshape(coarse_mesh_rep, (-1, coarse_mesh_rep.shape[-1])) # (B*N_coarse_mesh, d_h)
         N_fine_mesh, N_coarse_mesh = mesh_rep.shape[1], coarse_mesh_rep.shape[1]
         idx_offset = torch.tensor([[N_coarse_mesh], [N_fine_mesh]], device=mesh_rep.device)
         batch_size = mesh_rep.shape[0]
-        print(idx_offset.device, self.coarse2fine_edge_index.device)
         edge_index_batch = torch.cat([
             self.coarse2fine_edge_index + idx_offset * i
             for i in range(batch_size)
-        ], dim=1)
+        ], dim=1) # (2, B*M_c2f)
         
+        # This is needed since TransformerConv uses 'scatter' which does not have a deterministic implementation
         torch.use_deterministic_algorithms(False)
+        # Attention Step
         mesh_rep_batch, weights = self.attention_layer(
             (coarse_mesh_rep_batch, mesh_rep_batch),
             edge_index_batch,
             return_attention_weights=True,
         )
         torch.use_deterministic_algorithms(True)
-        mesh_rep_batch = mesh_rep_batch.reshape((batch_size, N_fine_mesh, mesh_rep_batch.shape[-1]))
+        mesh_rep_batch = mesh_rep_batch.reshape((batch_size, N_fine_mesh, mesh_rep_batch.shape[-1])) # (B, N_mesh, d_h)
         if self.mesh_resid:
             mesh_rep_batch = mesh_rep + mesh_rep_batch
         if self.layer_norm:
             mesh_rep_batch = self.att_norm(mesh_rep_batch)
+        
+        # Process step
         mesh_rep, edge_rep = self.proc_layer(mesh_rep_batch, mesh_rep_batch, edge_rep)
         return mesh_rep, edge_rep
         
@@ -112,7 +117,6 @@ class AttentionLAMv2(BaseGraphModel):
         self.mesh_embedder = utils.make_mlp([mesh_dim] + self.mlp_blueprint_end)
         self.m2m_embedder = utils.make_mlp([m2m_dim] + self.mlp_blueprint_end)
 
-        print("c2f device:", self.coarse2fine_edge_index.device)
         # GNNs
         # processor
         processor_nets = [

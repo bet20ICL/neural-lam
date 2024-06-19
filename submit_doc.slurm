@@ -41,4 +41,6 @@ which python
 
 # python train_model.py --model graph_lam --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --epochs 20
 
-python train_model.py --model multi_time_model --time_resolution_levels 3 --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --epochs 10
+# python train_model.py --model multi_time_model --time_resolution_levels 3 --dataset era5_uk_big --graph uk_big_ico --batch_size 8 --epochs 10
+
+python train_multi_model.py --model attention_lam_v2 --dataset era5_uk_big_small --epochs 5 --batch_size 8
