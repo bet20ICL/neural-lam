@@ -225,6 +225,12 @@ def get_args(default=False):
         help="Number of example predictions to plot during evaluation "
         "(default: 1)",
     )
+    parser.add_argument(
+        "--log_every_step",
+        type=int,
+        default=0,
+        help="Log every step during evaluation (default: 0 (false))",
+    )
     # Ablation 
     parser.add_argument(
         "--simple_grid",
@@ -343,7 +349,7 @@ def main():
             val_set = era5_multi_time_dataset(
                 args.dataset,
                 subsample_steps=args.resolutions,
-                pred_length=28,
+                pred_length=12,
                 split="val",
                 standardize=bool(args.standardize),
                 args=args,
@@ -360,7 +366,7 @@ def main():
             )
             val_set = era5_dataset(
                 args.dataset,
-                pred_length=28 // args.step_length,
+                pred_length=12 // args.step_length,
                 split="val",
                 standardize=bool(args.standardize),
                 args=args,
@@ -453,6 +459,7 @@ def main():
         monitor="val_mean_loss",
         mode="min",
         save_last=True,
+        every_n_epochs=args.epochs // 2,
     )
     callbacks.append(checkpoint_callback)
     logger = pl.loggers.WandbLogger(

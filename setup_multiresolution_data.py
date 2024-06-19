@@ -80,9 +80,7 @@ def fully_connected_edges(fine_graph, coarse_graph):
     coarse2fine_edge_index = torch.stack([grid_m.reshape(-1), grid_n.reshape(-1)], dim=1).T
     return coarse2fine_edge_index, None
 
-def create_border_mask():
-    full_dataset = "era5_uk_max"
-    local_dataset = "era5_uk_small"
+def create_border_mask(full_dataset="era5_uk_max", local_dataset="era5_uk_small"):
     full_grid = np.load(f"./data/{full_dataset}/static/nwp_xy.npy")
     local_grid = np.load(f"./data/{local_dataset}/static/nwp_xy.npy")
     
@@ -200,8 +198,15 @@ def test_subsample():
     x = torch.randn(81, 81, 6, 8)
     y = subsample(x, 3)
     print(y.shape)
+    
+    
+def border_mask_main():
+    create_border_mask("era5_uk")
+    create_border_mask("era5_uk_big")
+    create_border_mask("era5_uk_max")
 
 if __name__ == "__main__":
     # uk_hierarchy()
     # create_border_mask()
-    edges_main()
+    # edges_main()
+    border_mask_main()

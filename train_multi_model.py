@@ -90,7 +90,7 @@ def main():
     )
     val_set = ERA5MultiResolutionDataset(
         args.dataset_names,
-        pred_length=28,
+        pred_length=12,
         split="val",
         standardize=bool(args.standardize),
         args=args,

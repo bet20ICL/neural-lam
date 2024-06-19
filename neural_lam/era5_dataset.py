@@ -167,7 +167,7 @@ def era5_dataset(
             pattern=pattern,
             pred_length=pred_length, 
             split=split, 
-            # year="2022",
+            year="2022",
             subsample_step=subsample_step,
             standardize=standardize,
             subset=subset,

@@ -31,3 +31,23 @@
 # wandb sync ./wandb/offline-run-20240610_022857-wpgrdxu4
 
 # wandb sync ./wandb/offline-run-20240610_210625-na2wwhtx
+
+# =============================================
+# Presentation
+
+wandb sync ./wandb/offline-run-20240619_020644-a5epmugh
+wandb sync ./wandb/offline-run-20240619_020644-jksub7ka
+wandb sync ./wandb/offline-run-20240619_020702-9sbgz5sj
+wandb sync ./wandb/offline-run-20240619_020703-06yyak4y
+wandb sync ./wandb/offline-run-20240619_021935-h992xeqw
+wandb sync ./wandb/offline-run-20240619_022914-bwqvyvjw
+wandb sync ./wandb/offline-run-20240619_023354-jy5fasuv
+wandb sync ./wandb/offline-run-20240619_033833-8jv5amvs
+wandb sync ./wandb/offline-run-20240619_041516-ewk89ws6
+wandb sync ./wandb/offline-run-20240619_041518-lvhrx4jz
+wandb sync ./wandb/offline-run-20240619_041933-gufvyrg3
+wandb sync ./wandb/offline-run-20240619_041933-qirxp2pa
+wandb sync ./wandb/offline-run-20240619_043014-1twluq8u
+wandb sync ./wandb/offline-run-20240619_043014-2eoqn4jw
+wandb sync ./wandb/offline-run-20240619_043128-0a83ggj5
+wandb sync ./wandb/offline-run-20240619_043314-a6bj47uj

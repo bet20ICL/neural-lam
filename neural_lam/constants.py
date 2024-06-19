@@ -7,20 +7,20 @@ class ERA5UKConstants:
     GRID_FORCING_DIM = 12 # 4 variables * 3 time steps
     GRID_STATE_DIM = 8 * 6 # 8 levels * 6 variables
     HEAT_MAP_VARS = [4, 22, 13, 30, 38, 46] # indices of the variables to plot in the heatmap summary
-    VAL_STEP_LOG_ERRORS = np.array([1, 2, 4, 8, 16]) 
-    # VAL_STEP_LOG_ERRORS = np.array(list(range(1, 29))) 
+    VAL_STEP_LOG_ERRORS = np.array([1, 2, 4, 8, 12]) 
+    # VAL_STEP_LOG_ERRORS = np.array(list(range(1, 12+1)))
     METRICS_WATCH = [
         "val_rmse",
         "level-0_val_rmse",
         "level-1_val_rmse",
     ]
     VAR_LEADS_METRICS_WATCH = {
-        4: [1, 2, 4, 8, 16],
-        22: [1, 2, 4, 8, 16],
-        13: [1, 2, 4, 8, 16],
-        30: [1, 2, 4, 8, 16],
-        38: [1, 2, 4, 8, 16],
-        46: [1, 2, 4, 8, 16],
+        4: [1, 2, 4, 8, 12],
+        22: [1, 2, 4, 8, 12],
+        13: [1, 2, 4, 8, 12],
+        30: [1, 2, 4, 8, 12],
+        38: [1, 2, 4, 8, 12],
+        46: [1, 2, 4, 8, 12],
     }
     LEVELS = ['50', '150', '250', '400', '500', '600', '850', '1000']
     PARAM_NAMES = ['z50', 'z150', 'z250', 'z400', 'z500', 'z700', 'z850', 'z1000', 'q50', 'q150', 'q250', 'q400', 'q500', 'q700', 'q850', 'q1000', 't50', 't150', 't250', 't400', 't500', 't700', 't850', 't1000', 'u50', 'u150', 'u250', 'u400', 'u500', 'u700', 'u850', 'u1000', 'v50', 'v150', 'v250', 'v400', 'v500', 'v700', 'v850', 'v1000', 'w50', 'w150', 'w250', 'w400', 'w500', 'w700', 'w850', 'w1000']
